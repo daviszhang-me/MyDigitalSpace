@@ -254,12 +254,15 @@ jobs:
         touch ~/.ssh/known_hosts
         chmod 600 ~/.ssh/known_hosts
         
-        # Setup private key
+        # Setup private key (ensure proper format)
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /tmp/ssh_key
         chmod 600 /tmp/ssh_key
         
         # Add server to known hosts
         ssh-keyscan -H ${{ steps.get-ip.outputs.instance-ip }} >> ~/.ssh/known_hosts
+        
+        # Test SSH connection
+        ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@${{ steps.get-ip.outputs.instance-ip }} "echo 'SSH connection successful'"
     
     - name: Deploy to EC2
       env:
