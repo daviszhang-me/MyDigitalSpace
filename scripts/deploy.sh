@@ -16,6 +16,16 @@ NC='\033[0m' # No Color
 AWS_REGION=${AWS_REGION:-"ap-southeast-1"}
 ECR_REPOSITORY=${ECR_REPOSITORY:-"knowledgehub"}
 IMAGE_TAG=${IMAGE_TAG:-"latest"}
+APP_PORT=${PORT:-3001}
+
+# Validate environment
+if [ -f "scripts/validate-env.sh" ]; then
+    log_info "Validating environment configuration..."
+    bash scripts/validate-env.sh production || {
+        log_error "Environment validation failed"
+        exit 1
+    }
+fi
 
 # Functions
 log_info() {
@@ -72,8 +82,10 @@ build_and_push() {
     # Get ECR login token
     aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$AWS_REGION.amazonaws.com
     
-    # Build image
-    docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+    # Build image with build args
+    docker build -t $ECR_REPOSITORY:$IMAGE_TAG \
+        --build-arg NODE_ENV=production \
+        --build-arg PORT=$APP_PORT .
     
     # Tag for ECR
     ECR_URI=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY

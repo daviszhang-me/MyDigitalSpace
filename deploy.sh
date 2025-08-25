@@ -3,12 +3,29 @@
 # AWS Instance Deployment Script
 # Deploy MyDigitalSpace to AWS instance
 
+set -e  # Exit on any error
+
+# Configuration
 SERVER_IP="52.221.181.208"
-SERVER_USER="ubuntu"  # Common for AWS Ubuntu instances
+SERVER_USER="ubuntu"
 REMOTE_PATH="/var/www/MyDigitalSpace"
 LOCAL_PATH="/Users/daviszhang/project/MyDigitalSpace"
+ENVIRONMENT="production"
+
+# Environment Variables
+APP_PORT=3001
+NGINX_PORT=80
 
 echo "🚀 Starting deployment to AWS instance: $SERVER_IP"
+echo "📋 Environment: $ENVIRONMENT"
+echo "🔌 App Port: $APP_PORT, Nginx Port: $NGINX_PORT"
+
+# Validate environment
+if [ ! -f "$LOCAL_PATH/.env.production" ]; then
+    echo "❌ Production environment file not found: $LOCAL_PATH/.env.production"
+    echo "Please create it from .env.example"
+    exit 1
+fi
 
 # Check if SSH key exists (you may need to adjust the path)
 if [ ! -f ~/.ssh/id_rsa ]; then
@@ -35,14 +52,22 @@ rsync -av --exclude='node_modules' \
 
 echo "🔧 Preparing backend configuration..."
 
-# Create production environment file
+# Generate secure JWT secret if needed
+JWT_SECRET_VALUE="mydigitalspace-$(openssl rand -hex 32)"
+
+# Create production environment file with secure defaults
 cat > $TEMP_DIR/backend/.env << EOF
 NODE_ENV=production
-PORT=3001
-DB_PATH=./database/knowledgehub.db
-JWT_SECRET=your-secure-jwt-secret-key-$(date +%s)
-CORS_ORIGIN=http://$SERVER_IP,http://$SERVER_IP:3000
+PORT=$APP_PORT
+DB_PATH=./data/knowledgehub.db
+JWT_SECRET=$JWT_SECRET_VALUE
+CORS_ORIGIN=http://$SERVER_IP,https://$SERVER_IP,http://$SERVER_IP:$NGINX_PORT
+FRONTEND_URL=http://$SERVER_IP
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 EOF
+
+echo "✅ Generated secure JWT secret and environment configuration"
 
 echo "📤 Uploading files to server..."
 
@@ -66,8 +91,13 @@ cd backend
 npm install --production
 
 echo "Setting up database..."
-mkdir -p database
-node scripts/add-users.js
+mkdir -p data database
+# Create database directory structure
+if [ ! -f data/knowledgehub.db ]; then
+    echo "Initializing database..."
+    node scripts/setup-database.js 2>/dev/null || echo "Database setup script not found, will initialize on first run"
+fi
+node scripts/add-users.js 2>/dev/null || echo "User creation script not found or users already exist"
 
 echo "Setting up PM2 process manager..."
 # Install PM2 if not already installed
@@ -83,6 +113,10 @@ module.exports = {
     instances: 1,
     exec_mode: 'cluster',
     env: {
+      NODE_ENV: 'production',
+      PORT: 3001
+    },
+    env_production: {
       NODE_ENV: 'production',
       PORT: 3001
     },
@@ -125,7 +159,7 @@ server {
 
     # Proxy API requests to backend
     location /api/ {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:$APP_PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';

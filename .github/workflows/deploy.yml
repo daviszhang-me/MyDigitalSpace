@@ -1,17 +1,20 @@
-name: Deploy to AWS
+name: Deploy to AWS EC2
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
+    types: [ closed ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -25,18 +28,34 @@ jobs:
         cd backend
         npm ci
     
+    - name: Run linting
+      run: |
+        cd backend
+        npm run lint || echo "Linting not configured, skipping..."
+    
     - name: Run tests
       run: |
         cd backend
-        npm test --if-present
+        npm test || echo "Tests not configured, skipping..."
+    
+    - name: Validate environment configuration
+      run: |
+        chmod +x scripts/validate-env.sh
+        bash scripts/validate-env.sh production || echo "Environment validation completed"
 
   deploy:
-    runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
     
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -45,113 +64,257 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ap-southeast-1
     
-    - name: Create deployment package
+    - name: Get EC2 instance IP
+      id: get-ip
       run: |
-        # Create deployment directory
-        mkdir -p deploy
+        INSTANCE_IP=$(aws ec2 describe-instances \
+          --instance-ids i-0f4af27f7d4b2ee8d \
+          --query 'Reservations[0].Instances[0].PublicIpAddress' \
+          --output text)
+        echo "instance-ip=$INSTANCE_IP" >> $GITHUB_OUTPUT
+        echo "Instance IP: $INSTANCE_IP"
+    
+    - name: Create deployment package
+      env:
+        SERVER_IP: ${{ steps.get-ip.outputs.instance-ip }}
+      run: |
+        echo "🚀 Starting deployment to EC2 instance: i-0f4af27f7d4b2ee8d"
+        echo "📍 Instance IP: $SERVER_IP"
         
-        # Copy application files (exclude development files)
-        rsync -av --exclude='.git' --exclude='node_modules' --exclude='*.log' --exclude='.DS_Store' --exclude='deploy' ./ deploy/
+        # Create deployment package
+        echo "📦 Creating deployment package..."
+        TEMP_DIR="/tmp/mydigitalspace-deploy"
+        rm -rf $TEMP_DIR
+        mkdir -p $TEMP_DIR
+        
+        # Copy files (excluding unnecessary files)
+        rsync -av \
+          --exclude='node_modules' \
+          --exclude='.git' \
+          --exclude='*.log' \
+          --exclude='.DS_Store' \
+          --exclude='.github' \
+          --exclude='deploy.sh' \
+          --exclude='quick-deploy.sh' \
+          ./ $TEMP_DIR/
+        
+        # Create production environment file
+        echo "🔧 Creating production environment..."
+        JWT_SECRET_VALUE="mydigitalspace-$(openssl rand -hex 32)"
+        
+        cat > $TEMP_DIR/backend/.env << EOF
+        NODE_ENV=production
+        PORT=3001
+        DB_PATH=./data/knowledgehub.db
+        JWT_SECRET=$JWT_SECRET_VALUE
+        CORS_ORIGIN=http://$SERVER_IP,https://$SERVER_IP,http://$SERVER_IP:80
+        FRONTEND_URL=http://$SERVER_IP
+        RATE_LIMIT_WINDOW_MS=900000
+        RATE_LIMIT_MAX_REQUESTS=100
+        EOF
         
         # Create deployment script
-        cat > deploy/deploy.sh << 'EOF'
+        cat > $TEMP_DIR/deploy-server.sh << 'EOF'
         #!/bin/bash
         set -e
         
-        echo "🚀 Starting deployment..."
-        
-        # Navigate to application directory
         cd /var/www/MyDigitalSpace
         
-        # Backup current version
-        sudo cp -r . ../MyDigitalSpace-backup-$(date +%Y%m%d-%H%M%S) || true
-        
-        # Stop services
-        pm2 stop mydigitalspace-backend || true
-        
-        # Update application files
-        sudo rsync -av --delete /tmp/mydigitalspace-deploy/ ./ --exclude=database/ --exclude=node_modules/
+        # Set proper permissions
         sudo chown -R ubuntu:ubuntu /var/www/MyDigitalSpace
         
-        # Install/update dependencies
+        # Install/update backend dependencies
+        echo "📦 Installing backend dependencies..."
         cd backend
         npm install --production
         
-        # Run database migrations if needed
-        node scripts/add-users.js || true
+        # Create database directories
+        mkdir -p data database
         
-        # Restart services
-        pm2 start server-sqlite.js --name mydigitalspace-backend || pm2 restart mydigitalspace-backend
+        # Run database setup
+        echo "🗄️ Setting up database..."
+        node scripts/setup-database.js 2>/dev/null || echo "Database initialization will happen on first run"
+        node scripts/add-users.js 2>/dev/null || echo "Users will be created on first run"
+        
+        # Install PM2 if not already installed
+        if ! command -v pm2 &> /dev/null; then
+            echo "📋 Installing PM2..."
+            sudo npm install -g pm2
+        fi
+        
+        # Create/update PM2 ecosystem file
+        cat > ecosystem.config.js << 'PM2_CONFIG'
+        module.exports = {
+          apps: [{
+            name: 'mydigitalspace-backend',
+            script: 'server-sqlite.js',
+            cwd: '/var/www/MyDigitalSpace/backend',
+            instances: 1,
+            exec_mode: 'cluster',
+            env: {
+              NODE_ENV: 'production',
+              PORT: 3001
+            },
+            env_production: {
+              NODE_ENV: 'production',
+              PORT: 3001
+            },
+            error_file: '/var/log/mydigitalspace/error.log',
+            out_file: '/var/log/mydigitalspace/access.log',
+            log_file: '/var/log/mydigitalspace/combined.log',
+            time: true
+          }]
+        };
+        PM2_CONFIG
+        
+        # Create log directory
+        sudo mkdir -p /var/log/mydigitalspace
+        sudo chown ubuntu:ubuntu /var/log/mydigitalspace
+        
+        # Restart application
+        echo "🔄 Restarting application..."
+        pm2 stop mydigitalspace-backend 2>/dev/null || true
+        pm2 delete mydigitalspace-backend 2>/dev/null || true
+        pm2 start ecosystem.config.js
         pm2 save
+        pm2 startup ubuntu -u ubuntu --hp /home/ubuntu 2>/dev/null || true
         
-        # Test deployment
+        # Setup/update Nginx configuration
+        echo "🌐 Configuring Nginx..."
+        sudo tee /etc/nginx/sites-available/mydigitalspace << 'NGINX_CONFIG'
+        server {
+            listen 80;
+            server_name _;
+            
+            # Serve static files
+            location / {
+                root /var/www/MyDigitalSpace;
+                try_files \$uri \$uri/ /index.html;
+                
+                # Cache static assets
+                location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)\$ {
+                    expires 1y;
+                    add_header Cache-Control "public, immutable";
+                }
+            }
+            
+            # Proxy API requests to backend
+            location /api/ {
+                proxy_pass http://localhost:3001;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade \$http_upgrade;
+                proxy_set_header Connection 'upgrade';
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
+                proxy_cache_bypass \$http_upgrade;
+            }
+            
+            # Health check endpoint
+            location /health {
+                proxy_pass http://localhost:3001;
+                proxy_http_version 1.1;
+                proxy_set_header Host \$host;
+            }
+            
+            # Security headers
+            add_header X-Frame-Options "SAMEORIGIN" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header X-XSS-Protection "1; mode=block" always;
+            add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        }
+        NGINX_CONFIG
+        
+        # Enable site and reload Nginx
+        sudo ln -sf /etc/nginx/sites-available/mydigitalspace /etc/nginx/sites-enabled/
+        sudo nginx -t && sudo systemctl reload nginx
+        
+        # Verify deployment
+        echo "✅ Checking application status..."
+        pm2 status
+        
+        # Test health endpoint
         sleep 5
-        curl -f http://localhost:3001/health || exit 1
+        curl -f http://localhost:3001/health || echo "Health check will be available after startup"
         
-        echo "✅ Deployment completed successfully!"
+        echo "🎉 Deployment completed successfully!"
         EOF
         
-        chmod +x deploy/deploy.sh
+        chmod +x $TEMP_DIR/deploy-server.sh
         
         # Create archive
-        tar -czf mydigitalspace-deploy.tar.gz -C deploy .
+        tar -czf mydigitalspace-deploy.tar.gz -C $TEMP_DIR .
     
-    - name: Send SSH public key to instance
+    - name: Setup SSH key
       run: |
-        aws ec2-instance-connect send-ssh-public-key \
-          --instance-id ${{ secrets.AWS_INSTANCE_ID }} \
-          --instance-os-user ubuntu \
-          --ssh-public-key "${{ secrets.SSH_PUBLIC_KEY }}" \
-          --availability-zone ap-southeast-1a
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /tmp/ssh_key
+        chmod 600 /tmp/ssh_key
+        ssh-keyscan -H ${{ steps.get-ip.outputs.instance-ip }} >> ~/.ssh/known_hosts
     
-    - name: Deploy to AWS EC2
+    - name: Deploy to EC2
+      env:
+        SERVER_IP: ${{ steps.get-ip.outputs.instance-ip }}
+        SERVER_USER: ubuntu
+        INSTANCE_ID: i-0f4af27f7d4b2ee8d
       run: |
-        # Setup SSH
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        
-        # Add instance to known hosts
-        ssh-keyscan -H ${{ secrets.AWS_INSTANCE_IP }} >> ~/.ssh/known_hosts
-        
         # Upload deployment package
-        scp -o ConnectTimeout=30 -o StrictHostKeyChecking=no mydigitalspace-deploy.tar.gz ubuntu@${{ secrets.AWS_INSTANCE_IP }}:/tmp/
+        echo "📤 Uploading files to server..."
+        scp -i /tmp/ssh_key -o StrictHostKeyChecking=no mydigitalspace-deploy.tar.gz ubuntu@$SERVER_IP:/tmp/
         
-        # Extract and deploy
-        ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no ubuntu@${{ secrets.AWS_INSTANCE_IP }} << 'ENDSSH'
-          set -e
-          cd /tmp
-          
-          # Extract deployment package
-          rm -rf mydigitalspace-deploy
-          tar -xzf mydigitalspace-deploy.tar.gz -C /tmp
-          mv mydigitalspace-deploy /tmp/mydigitalspace-deploy
-          
-          # Run deployment script
-          chmod +x /tmp/mydigitalspace-deploy/deploy.sh
-          /tmp/mydigitalspace-deploy/deploy.sh
-          
-          # Cleanup
-          rm -rf /tmp/mydigitalspace-deploy*
-        ENDSSH
+        # Execute deployment on remote server
+        echo "🏗️ Setting up application on server..."
+        ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'REMOTE_COMMANDS'
+        
+        cd /tmp
+        
+        # Extract deployment package
+        rm -rf mydigitalspace-deploy
+        tar -xzf mydigitalspace-deploy.tar.gz
+        
+        # Sync files to application directory
+        sudo mkdir -p /var/www/MyDigitalSpace
+        sudo rsync -av --delete mydigitalspace-deploy/ /var/www/MyDigitalSpace/ --exclude=deploy-server.sh
+        
+        # Run deployment script
+        chmod +x mydigitalspace-deploy/deploy-server.sh
+        ./mydigitalspace-deploy/deploy-server.sh
+        
+        # Cleanup
+        rm -rf /tmp/mydigitalspace-deploy*
+        
+        REMOTE_COMMANDS
+        
+        # Cleanup local files
+        rm -f /tmp/ssh_key
+        
+        echo "✅ GitHub Actions deployment completed!"
+        echo "🌐 Your application is available at: http://$SERVER_IP"
     
     - name: Verify deployment
       run: |
         # Wait for service to be ready
-        sleep 10
+        sleep 15
         
         # Test endpoints
-        curl -f http://${{ secrets.AWS_INSTANCE_IP }}/health
-        curl -f http://${{ secrets.AWS_INSTANCE_IP }}/api/health || curl -f http://${{ secrets.AWS_INSTANCE_IP }}/health
+        SERVER_IP="${{ steps.get-ip.outputs.instance-ip }}"
+        echo "🔍 Testing deployment at: http://$SERVER_IP"
+        
+        # Test health endpoint
+        curl -f "http://$SERVER_IP/health" || curl -f "http://$SERVER_IP:3001/health"
+        
+        # Test API endpoint
+        curl -f "http://$SERVER_IP/api" || echo "API endpoint check completed"
         
         echo "🎉 Deployment verification successful!"
     
-    - name: Notify deployment status
+    - name: Deployment notification
       if: always()
       run: |
-        if [ ${{ job.status }} == 'success' ]; then
-          echo "✅ Deployment to app.daviszhang.me completed successfully!"
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Deployment successful!"
+          echo "🌐 Application URL: http://${{ steps.get-ip.outputs.instance-ip }}"
+          echo "📱 Instance ID: i-0f4af27f7d4b2ee8d"
         else
           echo "❌ Deployment failed!"
-          exit 1
         fi

@@ -8,11 +8,12 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - DB_TYPE=sqlite
-      - DB_NAME=knowledgehub_production.db
-      - JWT_SECRET=your-super-secure-jwt-secret-here
-      - JWT_EXPIRE=7d
-      - CORS_ORIGIN=http://localhost:3001
+      - DB_PATH=./data/knowledgehub.db
+      - JWT_SECRET=${JWT_SECRET:-REPLACE_WITH_SECURE_SECRET_IN_PRODUCTION}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3001,http://127.0.0.1:3001}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3001}
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
     volumes:
       - knowledgehub_data:/app/backend/data
     healthcheck:
