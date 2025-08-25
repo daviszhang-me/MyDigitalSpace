@@ -346,14 +346,15 @@ This project includes automated deployment to AWS EC2 using GitHub Actions.
 
 ### Deployment Status:
 - **Instance**: `i-0f4af27f7d4b2ee8d` (ap-southeast-1)
-- **URL**: http://13.215.248.109
+- **Domain**: http://daviszhang.me (also www.daviszhang.me)
+- **Fallback IP**: http://13.215.248.109
 - **Backend**: Port 3001 (proxied through Nginx)
 - **Database**: SQLite for production simplicity
 
 ### Monitoring:
 - GitHub Actions: [View Deployments](https://github.com/daviszhang-me/MyDigitalSpace/actions)
-- Application Health: http://13.215.248.109/health
-- API Status: http://13.215.248.109/api
+- Application Health: http://daviszhang.me/health
+- API Status: http://daviszhang.me/api
 
 ---
 

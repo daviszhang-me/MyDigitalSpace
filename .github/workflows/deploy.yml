@@ -107,8 +107,8 @@ jobs:
         PORT=3001
         DB_PATH=./data/knowledgehub.db
         JWT_SECRET=$JWT_SECRET_VALUE
-        CORS_ORIGIN=http://$SERVER_IP,https://$SERVER_IP,http://$SERVER_IP:80
-        FRONTEND_URL=http://$SERVER_IP
+        CORS_ORIGIN=http://daviszhang.me,https://daviszhang.me,http://www.daviszhang.me,https://www.daviszhang.me
+        FRONTEND_URL=http://daviszhang.me
         RATE_LIMIT_WINDOW_MS=900000
         RATE_LIMIT_MAX_REQUESTS=100
         EOF
@@ -184,7 +184,7 @@ jobs:
         sudo tee /etc/nginx/sites-available/mydigitalspace << 'NGINX_CONFIG'
         server {
             listen 80;
-            server_name _;
+            server_name daviszhang.me www.daviszhang.me;
             
             # Serve static files
             location / {
