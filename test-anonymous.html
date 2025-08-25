@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous User Test - MyDigitalSpace</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 20px; }
+        .test-section { background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .success { background: #e8f5e9; color: #2e7d32; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .error { background: #ffebee; color: #c62828; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .note-item { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; border: 1px solid #ddd; }
+        .note-title { font-weight: bold; color: #333; margin-bottom: 8px; }
+        .note-category { background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 3px; font-size: 0.8em; margin-bottom: 8px; display: inline-block; }
+        button { background: #1976d2; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #1565c0; }
+        .stats { display: flex; gap: 20px; margin: 20px 0; }
+        .stat { background: white; padding: 15px; border-radius: 5px; text-align: center; border: 1px solid #ddd; }
+        .count { font-size: 2em; font-weight: bold; color: #1976d2; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Anonymous User Test - KnowledgeHub Public Access</h1>
+    
+    <div class="test-section">
+        <h3>📋 Test Summary</h3>
+        <p>This tests that anonymous users (not logged in) can view all notes from the KnowledgeHub database.</p>
+        <button onclick="testPublicAccess()">🔍 Test Public Access</button>
+        <button onclick="testCreateNote()">✏️ Test Create Note (Should Fail)</button>
+        <button onclick="clearResults()">🧹 Clear Results</button>
+    </div>
+    
+    <div id="results"></div>
+    <div id="stats"></div>
+    <div id="notes"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        
+        async function testPublicAccess() {
+            const resultsDiv = document.getElementById('results');
+            const statsDiv = document.getElementById('stats');
+            const notesDiv = document.getElementById('notes');
+            
+            try {
+                resultsDiv.innerHTML = '<p>🔄 Testing public access to notes...</p>';
+                
+                // Test notes endpoint without auth
+                const notesResponse = await fetch(`${API_BASE}/notes`);
+                const notesData = await notesResponse.json();
+                
+                if (notesData.success) {
+                    const notes = notesData.data.notes;
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            ✅ <strong>SUCCESS!</strong> Anonymous users can access notes
+                            <p>Found ${notes.length} notes in the database</p>
+                        </div>
+                    `;
+                    
+                    // Show stats
+                    const categories = [...new Set(notes.map(note => note.category))];
+                    statsDiv.innerHTML = `
+                        <div class="stats">
+                            <div class="stat">
+                                <div class="count">${notes.length}</div>
+                                <div>Total Notes</div>
+                            </div>
+                            <div class="stat">
+                                <div class="count">${categories.length}</div>
+                                <div>Categories</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Display first 10 notes
+                    notesDiv.innerHTML = `
+                        <h3>📝 Sample Notes (First 10)</h3>
+                        ${notes.slice(0, 10).map(note => `
+                            <div class="note-item">
+                                <div class="note-title">${note.title}</div>
+                                <div class="note-category">${note.category}</div>
+                                <div>${note.content.substring(0, 200)}${note.content.length > 200 ? '...' : ''}</div>
+                                <small>Created: ${new Date(note.created_at).toLocaleDateString()}</small>
+                            </div>
+                        `).join('')}
+                        ${notes.length > 10 ? `<p><em>...and ${notes.length - 10} more notes</em></p>` : ''}
+                    `;
+                    
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            ❌ <strong>FAILED!</strong> Could not access notes
+                            <p>Error: ${notesData.message}</p>
+                        </div>
+                    `;
+                }
+                
+                // Test stats endpoint
+                const statsResponse = await fetch(`${API_BASE}/notes/stats/summary`);
+                const statsData = await statsResponse.json();
+                
+                if (statsData.success) {
+                    console.log('Stats also accessible:', statsData.data);
+                } else {
+                    console.log('Stats not accessible:', statsData.message);
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        ❌ <strong>ERROR!</strong> Network or server error
+                        <p>Error: ${error.message}</p>
+                        <p><small>Make sure your backend server is running at localhost:3001</small></p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testCreateNote() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                resultsDiv.innerHTML = '<p>🔄 Testing note creation without auth...</p>';
+                
+                const response = await fetch(`${API_BASE}/notes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: 'Anonymous Test Note',
+                        content: 'This should fail',
+                        category: 'ideas'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            ✅ <strong>CORRECT!</strong> Anonymous users cannot create notes
+                            <p>Got expected error: ${data.message}</p>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="error">
+                            ❌ <strong>UNEXPECTED!</strong> Anonymous user could create notes
+                            <p>This shouldn't happen - only authenticated users should create notes</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        ❌ <strong>ERROR!</strong> Network error
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('stats').innerHTML = '';
+            document.getElementById('notes').innerHTML = '';
+        }
+        
+        // Auto-test on load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(testPublicAccess, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+    "Changes": [
+        {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+                "Name": "daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "54.179.4.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "CREATE", 
+            "ResourceRecordSet": {
+                "Name": "www.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "54.179.4.208"
+                    }
+                ]
+            }
+        }
+    ]
+}

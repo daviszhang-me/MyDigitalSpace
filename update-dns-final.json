@@ -1,0 +1,95 @@
+{
+    "Changes": [
+        {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+                "Name": "daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "52.221.181.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "UPSERT", 
+            "ResourceRecordSet": {
+                "Name": "www.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "52.221.181.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+                "Name": "app.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "52.221.181.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "UPSERT", 
+            "ResourceRecordSet": {
+                "Name": "knowledge.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "52.221.181.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+                "Name": "hub.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "52.221.181.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+                "Name": "notes.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "52.221.181.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "UPSERT",
+            "ResourceRecordSet": {
+                "Name": "dev.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "52.221.181.208"
+                    }
+                ]
+            }
+        }
+    ]
+}

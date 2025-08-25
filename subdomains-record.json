@@ -1,0 +1,69 @@
+{
+    "Changes": [
+        {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+                "Name": "app.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "54.179.4.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "CREATE", 
+            "ResourceRecordSet": {
+                "Name": "knowledge.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "54.179.4.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+                "Name": "hub.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "54.179.4.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+                "Name": "notes.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "54.179.4.208"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+                "Name": "dev.daviszhang.me",
+                "Type": "A",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "54.179.4.208"
+                    }
+                ]
+            }
+        }
+    ]
+}

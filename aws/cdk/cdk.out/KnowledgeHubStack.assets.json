@@ -1,0 +1,36 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200": {
+      "displayName": "KnowledgeHubStack/Custom::VpcRestrictDefaultSGCustomResourceProvider Code",
+      "source": {
+        "path": "asset.7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "801532171791-ap-southeast-1-fa8ef7a6": {
+          "bucketName": "cdk-hnb659fds-assets-801532171791-ap-southeast-1",
+          "objectKey": "7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200.zip",
+          "region": "ap-southeast-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::801532171791:role/cdk-hnb659fds-file-publishing-role-801532171791-ap-southeast-1"
+        }
+      }
+    },
+    "ac21e5604d7875cfe5d7e4fb472c504276d2dd433cc319c057556e82eed6aeda": {
+      "displayName": "KnowledgeHubStack Template",
+      "source": {
+        "path": "KnowledgeHubStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "801532171791-ap-southeast-1-55695e52": {
+          "bucketName": "cdk-hnb659fds-assets-801532171791-ap-southeast-1",
+          "objectKey": "ac21e5604d7875cfe5d7e4fb472c504276d2dd433cc319c057556e82eed6aeda.json",
+          "region": "ap-southeast-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::801532171791:role/cdk-hnb659fds-file-publishing-role-801532171791-ap-southeast-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

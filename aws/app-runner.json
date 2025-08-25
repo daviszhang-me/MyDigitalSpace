@@ -1,0 +1,21 @@
+{
+  "ServiceName": "knowledgehub-service",
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "801532171791.dkr.ecr.ap-southeast-1.amazonaws.com/knowledgehub:latest",
+      "ImageConfiguration": {
+        "Port": "3001",
+        "RuntimeEnvironmentVariables": {
+          "NODE_ENV": "production",
+          "PORT": "3001"
+        }
+      },
+      "ImageRepositoryType": "ECR"
+    },
+    "AutoDeploymentsEnabled": false
+  },
+  "InstanceConfiguration": {
+    "Cpu": "0.25 vCPU",
+    "Memory": "0.5 GB"
+  }
+}

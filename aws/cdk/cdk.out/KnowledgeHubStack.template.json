@@ -1,0 +1,1265 @@
+{
+ "Description": "KnowledgeHub - Personal Knowledge Management System",
+ "Resources": {
+  "KnowledgeHubVpc06182113": {
+   "Type": "AWS::EC2::VPC",
+   "Properties": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/Resource"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet1Subnet65E9E88C": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "ap-southeast-1a",
+    "CidrBlock": "10.0.0.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1/Subnet"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet1RouteTable326C88F6": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1/RouteTable"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet1RouteTableAssociationEB62E43C": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet1RouteTable326C88F6"
+    },
+    "SubnetId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet1Subnet65E9E88C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1/RouteTableAssociation"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet1DefaultRoute59970E04": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "KnowledgeHubVpcIGW66D7874B"
+    },
+    "RouteTableId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet1RouteTable326C88F6"
+    }
+   },
+   "DependsOn": [
+    "KnowledgeHubVpcVPCGW32F255F0"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1/DefaultRoute"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet1EIP2F91219E": {
+   "Type": "AWS::EC2::EIP",
+   "Properties": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1/EIP"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet1NATGateway675F859F": {
+   "Type": "AWS::EC2::NatGateway",
+   "Properties": {
+    "AllocationId": {
+     "Fn::GetAtt": [
+      "KnowledgeHubVpcPublicSubnet1EIP2F91219E",
+      "AllocationId"
+     ]
+    },
+    "SubnetId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet1Subnet65E9E88C"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1"
+     }
+    ]
+   },
+   "DependsOn": [
+    "KnowledgeHubVpcPublicSubnet1DefaultRoute59970E04",
+    "KnowledgeHubVpcPublicSubnet1RouteTableAssociationEB62E43C"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet1/NATGateway"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet2Subnet55277025": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "ap-southeast-1b",
+    "CidrBlock": "10.0.1.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet2/Subnet"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet2RouteTable4EACA1DD": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet2/RouteTable"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet2RouteTableAssociation967F9B3F": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet2RouteTable4EACA1DD"
+    },
+    "SubnetId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet2Subnet55277025"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet2/RouteTableAssociation"
+   }
+  },
+  "KnowledgeHubVpcPublicSubnet2DefaultRoute0583D437": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "KnowledgeHubVpcIGW66D7874B"
+    },
+    "RouteTableId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet2RouteTable4EACA1DD"
+    }
+   },
+   "DependsOn": [
+    "KnowledgeHubVpcVPCGW32F255F0"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PublicSubnet2/DefaultRoute"
+   }
+  },
+  "KnowledgeHubVpcPrivateSubnet1Subnet8801973D": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "ap-southeast-1a",
+    "CidrBlock": "10.0.2.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet1/Subnet"
+   }
+  },
+  "KnowledgeHubVpcPrivateSubnet1RouteTableCCC1745F": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet1/RouteTable"
+   }
+  },
+  "KnowledgeHubVpcPrivateSubnet1RouteTableAssociationB0E9996A": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "KnowledgeHubVpcPrivateSubnet1RouteTableCCC1745F"
+    },
+    "SubnetId": {
+     "Ref": "KnowledgeHubVpcPrivateSubnet1Subnet8801973D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet1/RouteTableAssociation"
+   }
+  },
+  "KnowledgeHubVpcPrivateSubnet1DefaultRoute41B4C678": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet1NATGateway675F859F"
+    },
+    "RouteTableId": {
+     "Ref": "KnowledgeHubVpcPrivateSubnet1RouteTableCCC1745F"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet1/DefaultRoute"
+   }
+  },
+  "KnowledgeHubVpcPrivateSubnet2SubnetFBF51870": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "ap-southeast-1b",
+    "CidrBlock": "10.0.3.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet2/Subnet"
+   }
+  },
+  "KnowledgeHubVpcPrivateSubnet2RouteTable1A153394": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet2/RouteTable"
+   }
+  },
+  "KnowledgeHubVpcPrivateSubnet2RouteTableAssociation54823F23": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "KnowledgeHubVpcPrivateSubnet2RouteTable1A153394"
+    },
+    "SubnetId": {
+     "Ref": "KnowledgeHubVpcPrivateSubnet2SubnetFBF51870"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet2/RouteTableAssociation"
+   }
+  },
+  "KnowledgeHubVpcPrivateSubnet2DefaultRoute129E0510": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "KnowledgeHubVpcPublicSubnet1NATGateway675F859F"
+    },
+    "RouteTableId": {
+     "Ref": "KnowledgeHubVpcPrivateSubnet2RouteTable1A153394"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/PrivateSubnet2/DefaultRoute"
+   }
+  },
+  "KnowledgeHubVpcIGW66D7874B": {
+   "Type": "AWS::EC2::InternetGateway",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/IGW"
+   }
+  },
+  "KnowledgeHubVpcVPCGW32F255F0": {
+   "Type": "AWS::EC2::VPCGatewayAttachment",
+   "Properties": {
+    "InternetGatewayId": {
+     "Ref": "KnowledgeHubVpcIGW66D7874B"
+    },
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/VPCGW"
+   }
+  },
+  "KnowledgeHubVpcRestrictDefaultSecurityGroupCustomResourceE3675A5A": {
+   "Type": "Custom::VpcRestrictDefaultSG",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E",
+      "Arn"
+     ]
+    },
+    "DefaultSecurityGroupId": {
+     "Fn::GetAtt": [
+      "KnowledgeHubVpc06182113",
+      "DefaultSecurityGroup"
+     ]
+    },
+    "Account": "801532171791"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubVpc/RestrictDefaultSecurityGroupCustomResource/Default"
+   }
+  },
+  "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     }
+    ],
+    "Policies": [
+     {
+      "PolicyName": "Inline",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupEgress"
+         ],
+         "Resource": [
+          {
+           "Fn::Join": [
+            "",
+            [
+             "arn:aws:ec2:ap-southeast-1:801532171791:security-group/",
+             {
+              "Fn::GetAtt": [
+               "KnowledgeHubVpc06182113",
+               "DefaultSecurityGroup"
+              ]
+             }
+            ]
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Role"
+   }
+  },
+  "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-801532171791-ap-southeast-1",
+     "S3Key": "7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200.zip"
+    },
+    "Timeout": 900,
+    "MemorySize": 128,
+    "Handler": "__entrypoint__.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Description": "Lambda function for removing all inbound/outbound rules from the VPC default security group"
+   },
+   "DependsOn": [
+    "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Handler",
+    "aws:asset:path": "asset.7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200",
+    "aws:asset:property": "Code"
+   }
+  },
+  "KnowledgeHubFileSystemE4F1DF09": {
+   "Type": "AWS::EFS::FileSystem",
+   "Properties": {
+    "Encrypted": true,
+    "FileSystemPolicy": {
+     "Statement": [
+      {
+       "Action": [
+        "elasticfilesystem:ClientRootAccess",
+        "elasticfilesystem:ClientWrite"
+       ],
+       "Condition": {
+        "Bool": {
+         "elasticfilesystem:AccessedViaMountTarget": "true"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": "*"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "FileSystemTags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubFileSystem"
+     }
+    ],
+    "LifecyclePolicies": [
+     {
+      "TransitionToIA": "AFTER_30_DAYS"
+     }
+    ],
+    "PerformanceMode": "generalPurpose"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubFileSystem/Resource"
+   }
+  },
+  "KnowledgeHubFileSystemEfsSecurityGroupB0AF3F14": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "KnowledgeHubStack/KnowledgeHubFileSystem/EfsSecurityGroup",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "KnowledgeHubStack/KnowledgeHubFileSystem"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubFileSystem/EfsSecurityGroup/Resource"
+   }
+  },
+  "KnowledgeHubFileSystemEfsSecurityGroupfromKnowledgeHubStackKnowledgeHubServiceSecurityGroupEEB6014D2049B1FF7A65": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "from KnowledgeHubStackKnowledgeHubServiceSecurityGroupEEB6014D:2049",
+    "FromPort": 2049,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "KnowledgeHubFileSystemEfsSecurityGroupB0AF3F14",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "KnowledgeHubServiceSecurityGroupB73EC642",
+      "GroupId"
+     ]
+    },
+    "ToPort": 2049
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubFileSystem/EfsSecurityGroup/from KnowledgeHubStackKnowledgeHubServiceSecurityGroupEEB6014D:2049"
+   }
+  },
+  "KnowledgeHubFileSystemEfsMountTarget171830BF1": {
+   "Type": "AWS::EFS::MountTarget",
+   "Properties": {
+    "FileSystemId": {
+     "Ref": "KnowledgeHubFileSystemE4F1DF09"
+    },
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "KnowledgeHubFileSystemEfsSecurityGroupB0AF3F14",
+       "GroupId"
+      ]
+     }
+    ],
+    "SubnetId": {
+     "Ref": "KnowledgeHubVpcPrivateSubnet1Subnet8801973D"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubFileSystem/EfsMountTarget1"
+   }
+  },
+  "KnowledgeHubFileSystemEfsMountTarget266569785": {
+   "Type": "AWS::EFS::MountTarget",
+   "Properties": {
+    "FileSystemId": {
+     "Ref": "KnowledgeHubFileSystemE4F1DF09"
+    },
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "KnowledgeHubFileSystemEfsSecurityGroupB0AF3F14",
+       "GroupId"
+      ]
+     }
+    ],
+    "SubnetId": {
+     "Ref": "KnowledgeHubVpcPrivateSubnet2SubnetFBF51870"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubFileSystem/EfsMountTarget2"
+   }
+  },
+  "KnowledgeHubCluster4EDCE4DA": {
+   "Type": "AWS::ECS::Cluster",
+   "Properties": {
+    "ClusterSettings": [
+     {
+      "Name": "containerInsights",
+      "Value": "enabled"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubCluster/Resource"
+   }
+  },
+  "KnowledgeHubLogGroupCE310C08": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "RetentionInDays": 7
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubLogGroup/Resource"
+   }
+  },
+  "KnowledgeHubTaskTaskRole8D47A3DC": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubTask/TaskRole/Resource"
+   }
+  },
+  "KnowledgeHubTask6E63E1DC": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Environment": [
+       {
+        "Name": "NODE_ENV",
+        "Value": "production"
+       },
+       {
+        "Name": "PORT",
+        "Value": "3001"
+       },
+       {
+        "Name": "DB_TYPE",
+        "Value": "sqlite"
+       },
+       {
+        "Name": "DB_NAME",
+        "Value": "/app/data/knowledgehub_production.db"
+       },
+       {
+        "Name": "JWT_SECRET",
+        "Value": "your-super-secure-jwt-secret-here"
+       },
+       {
+        "Name": "JWT_EXPIRE",
+        "Value": "7d"
+       }
+      ],
+      "Essential": true,
+      "HealthCheck": {
+       "Command": [
+        "CMD-SHELL",
+        "node backend/scripts/health-check.js || exit 1"
+       ],
+       "Interval": 30,
+       "Retries": 3,
+       "StartPeriod": 60,
+       "Timeout": 5
+      },
+      "Image": "your-docker-registry/knowledgehub:latest",
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "KnowledgeHubLogGroupCE310C08"
+        },
+        "awslogs-stream-prefix": "knowledgehub",
+        "awslogs-region": "ap-southeast-1"
+       }
+      },
+      "MountPoints": [
+       {
+        "ContainerPath": "/app/data",
+        "ReadOnly": false,
+        "SourceVolume": "knowledgehub-data"
+       }
+      ],
+      "Name": "KnowledgeHubContainer",
+      "PortMappings": [
+       {
+        "ContainerPort": 3001,
+        "Protocol": "tcp"
+       }
+      ]
+     }
+    ],
+    "Cpu": "512",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "KnowledgeHubTaskExecutionRoleFD760E50",
+      "Arn"
+     ]
+    },
+    "Family": "KnowledgeHubStackKnowledgeHubTask93B53776",
+    "Memory": "1024",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "KnowledgeHubTaskTaskRole8D47A3DC",
+      "Arn"
+     ]
+    },
+    "Volumes": [
+     {
+      "EFSVolumeConfiguration": {
+       "FilesystemId": {
+        "Ref": "KnowledgeHubFileSystemE4F1DF09"
+       },
+       "RootDirectory": "/data",
+       "TransitEncryption": "ENABLED"
+      },
+      "Name": "knowledgehub-data"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubTask/Resource"
+   }
+  },
+  "KnowledgeHubTaskExecutionRoleFD760E50": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubTask/ExecutionRole/Resource"
+   }
+  },
+  "KnowledgeHubTaskExecutionRoleDefaultPolicy0E65E131": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KnowledgeHubLogGroupCE310C08",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "KnowledgeHubTaskExecutionRoleDefaultPolicy0E65E131",
+    "Roles": [
+     {
+      "Ref": "KnowledgeHubTaskExecutionRoleFD760E50"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubTask/ExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "KnowledgeHubServiceLB3623BC5E": {
+   "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+   "Properties": {
+    "LoadBalancerAttributes": [
+     {
+      "Key": "deletion_protection.enabled",
+      "Value": "false"
+     }
+    ],
+    "Scheme": "internet-facing",
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "KnowledgeHubServiceLBSecurityGroup0F0C166F",
+       "GroupId"
+      ]
+     }
+    ],
+    "Subnets": [
+     {
+      "Ref": "KnowledgeHubVpcPublicSubnet1Subnet65E9E88C"
+     },
+     {
+      "Ref": "KnowledgeHubVpcPublicSubnet2Subnet55277025"
+     }
+    ],
+    "Type": "application"
+   },
+   "DependsOn": [
+    "KnowledgeHubVpcPublicSubnet1DefaultRoute59970E04",
+    "KnowledgeHubVpcPublicSubnet1RouteTableAssociationEB62E43C",
+    "KnowledgeHubVpcPublicSubnet2DefaultRoute0583D437",
+    "KnowledgeHubVpcPublicSubnet2RouteTableAssociation967F9B3F"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/LB/Resource"
+   }
+  },
+  "KnowledgeHubServiceLBSecurityGroup0F0C166F": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Automatically created Security Group for ELB KnowledgeHubStackKnowledgeHubServiceLBF7125314",
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow from anyone on port 80",
+      "FromPort": 80,
+      "IpProtocol": "tcp",
+      "ToPort": 80
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/LB/SecurityGroup/Resource"
+   }
+  },
+  "KnowledgeHubServiceLBSecurityGrouptoKnowledgeHubStackKnowledgeHubServiceSecurityGroupEEB6014D300133DA6901": {
+   "Type": "AWS::EC2::SecurityGroupEgress",
+   "Properties": {
+    "Description": "Load balancer to target",
+    "DestinationSecurityGroupId": {
+     "Fn::GetAtt": [
+      "KnowledgeHubServiceSecurityGroupB73EC642",
+      "GroupId"
+     ]
+    },
+    "FromPort": 3001,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "KnowledgeHubServiceLBSecurityGroup0F0C166F",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "ToPort": 3001
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/LB/SecurityGroup/to KnowledgeHubStackKnowledgeHubServiceSecurityGroupEEB6014D:3001"
+   }
+  },
+  "KnowledgeHubServiceLBPublicListener704F6D7B": {
+   "Type": "AWS::ElasticLoadBalancingV2::Listener",
+   "Properties": {
+    "DefaultActions": [
+     {
+      "TargetGroupArn": {
+       "Ref": "KnowledgeHubServiceLBPublicListenerECSGroup850A6BAA"
+      },
+      "Type": "forward"
+     }
+    ],
+    "LoadBalancerArn": {
+     "Ref": "KnowledgeHubServiceLB3623BC5E"
+    },
+    "Port": 80,
+    "Protocol": "HTTP"
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/LB/PublicListener/Resource"
+   }
+  },
+  "KnowledgeHubServiceLBPublicListenerECSGroup850A6BAA": {
+   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+   "Properties": {
+    "HealthCheckIntervalSeconds": 30,
+    "HealthCheckPath": "/health",
+    "HealthCheckTimeoutSeconds": 5,
+    "HealthyThresholdCount": 2,
+    "Matcher": {
+     "HttpCode": "200"
+    },
+    "Port": 80,
+    "Protocol": "HTTP",
+    "TargetGroupAttributes": [
+     {
+      "Key": "stickiness.enabled",
+      "Value": "false"
+     }
+    ],
+    "TargetType": "ip",
+    "UnhealthyThresholdCount": 5,
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/LB/PublicListener/ECSGroup/Resource"
+   }
+  },
+  "KnowledgeHubService17905ADD": {
+   "Type": "AWS::ECS::Service",
+   "Properties": {
+    "Cluster": {
+     "Ref": "KnowledgeHubCluster4EDCE4DA"
+    },
+    "DeploymentConfiguration": {
+     "Alarms": {
+      "AlarmNames": [],
+      "Enable": false,
+      "Rollback": false
+     },
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 50
+    },
+    "DesiredCount": 1,
+    "EnableECSManagedTags": false,
+    "HealthCheckGracePeriodSeconds": 60,
+    "LaunchType": "FARGATE",
+    "LoadBalancers": [
+     {
+      "ContainerName": "KnowledgeHubContainer",
+      "ContainerPort": 3001,
+      "TargetGroupArn": {
+       "Ref": "KnowledgeHubServiceLBPublicListenerECSGroup850A6BAA"
+      }
+     }
+    ],
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "DISABLED",
+      "SecurityGroups": [
+       {
+        "Fn::GetAtt": [
+         "KnowledgeHubServiceSecurityGroupB73EC642",
+         "GroupId"
+        ]
+       }
+      ],
+      "Subnets": [
+       {
+        "Ref": "KnowledgeHubVpcPrivateSubnet1Subnet8801973D"
+       },
+       {
+        "Ref": "KnowledgeHubVpcPrivateSubnet2SubnetFBF51870"
+       }
+      ]
+     }
+    },
+    "PlatformVersion": "LATEST",
+    "TaskDefinition": {
+     "Ref": "KnowledgeHubTask6E63E1DC"
+    }
+   },
+   "DependsOn": [
+    "KnowledgeHubServiceLBPublicListenerECSGroup850A6BAA",
+    "KnowledgeHubServiceLBPublicListener704F6D7B",
+    "KnowledgeHubTaskTaskRole8D47A3DC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/Service/Service"
+   }
+  },
+  "KnowledgeHubServiceSecurityGroupB73EC642": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "KnowledgeHubStack/KnowledgeHubService/Service/SecurityGroup",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "KnowledgeHubVpc06182113"
+    }
+   },
+   "DependsOn": [
+    "KnowledgeHubTaskTaskRole8D47A3DC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/Service/SecurityGroup/Resource"
+   }
+  },
+  "KnowledgeHubServiceSecurityGroupfromKnowledgeHubStackKnowledgeHubServiceLBSecurityGroup397A5E263001569E3676": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "Load balancer to target",
+    "FromPort": 3001,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "KnowledgeHubServiceSecurityGroupB73EC642",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "KnowledgeHubServiceLBSecurityGroup0F0C166F",
+      "GroupId"
+     ]
+    },
+    "ToPort": 3001
+   },
+   "DependsOn": [
+    "KnowledgeHubTaskTaskRole8D47A3DC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/Service/SecurityGroup/from KnowledgeHubStackKnowledgeHubServiceLBSecurityGroup397A5E26:3001"
+   }
+  },
+  "KnowledgeHubServiceTaskCountTarget7DFE5207": {
+   "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+   "Properties": {
+    "MaxCapacity": 10,
+    "MinCapacity": 1,
+    "ResourceId": {
+     "Fn::Join": [
+      "",
+      [
+       "service/",
+       {
+        "Ref": "KnowledgeHubCluster4EDCE4DA"
+       },
+       "/",
+       {
+        "Fn::GetAtt": [
+         "KnowledgeHubService17905ADD",
+         "Name"
+        ]
+       }
+      ]
+     ]
+    },
+    "RoleARN": "arn:aws:iam::801532171791:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService",
+    "ScalableDimension": "ecs:service:DesiredCount",
+    "ServiceNamespace": "ecs"
+   },
+   "DependsOn": [
+    "KnowledgeHubTaskTaskRole8D47A3DC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/Service/TaskCount/Target/Resource"
+   }
+  },
+  "KnowledgeHubServiceTaskCountTargetCpuScaling166444A8": {
+   "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "Properties": {
+    "PolicyName": "KnowledgeHubStackKnowledgeHubServiceTaskCountTargetCpuScaling37588EDA",
+    "PolicyType": "TargetTrackingScaling",
+    "ScalingTargetId": {
+     "Ref": "KnowledgeHubServiceTaskCountTarget7DFE5207"
+    },
+    "TargetTrackingScalingPolicyConfiguration": {
+     "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+     },
+     "ScaleInCooldown": 300,
+     "ScaleOutCooldown": 300,
+     "TargetValue": 70
+    }
+   },
+   "DependsOn": [
+    "KnowledgeHubTaskTaskRole8D47A3DC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/Service/TaskCount/Target/CpuScaling/Resource"
+   }
+  },
+  "KnowledgeHubServiceTaskCountTargetMemoryScaling726C065C": {
+   "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "Properties": {
+    "PolicyName": "KnowledgeHubStackKnowledgeHubServiceTaskCountTargetMemoryScalingDDBA025D",
+    "PolicyType": "TargetTrackingScaling",
+    "ScalingTargetId": {
+     "Ref": "KnowledgeHubServiceTaskCountTarget7DFE5207"
+    },
+    "TargetTrackingScalingPolicyConfiguration": {
+     "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "ECSServiceAverageMemoryUtilization"
+     },
+     "ScaleInCooldown": 300,
+     "ScaleOutCooldown": 300,
+     "TargetValue": 80
+    }
+   },
+   "DependsOn": [
+    "KnowledgeHubTaskTaskRole8D47A3DC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/KnowledgeHubService/Service/TaskCount/Target/MemoryScaling/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/31RTW/bMAz9Lb0rWuvTrmnWFgG6zYiDXgtaZjw2smSIlIPA8H8fZCdx0n2c+Pj4SJCPmc4eMn1/BwdemGq/sFTqvhAwewUHfu/RZLp/a41a7dxbvlJ5LC2ZIpYOJXEz2vgouIXS4szP3JLZGwIh7y7iBJ7WeQo/QF5A8ABHlQfqQHAevHaCweFFMG1yypYiYH416EQVaGIgOb4EH9txh/8Sa1cHZP6DfxrpQeGOdf9MFosjCzZJd5t999HJFkKNMig0rPuVjSwYUvEMnyHUkDzg/TfckaOzA58Z7wTIYbjiTr0Fho7M5OoJFgZscjUNWaU1BmV9zbp/9fXl2jMeFEGj+42fPjPG3Fsyo5UTGg94b0GS1ayXbWvJjN969VA9ggVnsPq0EFpgIWM9VOWoIFd3me7/3h2mna7yax2xoDtpzviqPtl8Oe0qHRTMMoji2YAlV+t+NimJR/tumSlsA5g9ubqY+mZnbohhUBtkH0N6RGTxzZzu3D9KefAdVRgegVEtmVEKgZpcnXp+RmmjDMr5CvUHf+myTD981fd3H0y0CNEJNag3U/wN7TrZZ6cDAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "KnowledgeHubStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "KnowledgeHubServiceLoadBalancerDNSF31B2680": {
+   "Value": {
+    "Fn::GetAtt": [
+     "KnowledgeHubServiceLB3623BC5E",
+     "DNSName"
+    ]
+   }
+  },
+  "KnowledgeHubServiceServiceURL31F9AFF3": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "http://",
+      {
+       "Fn::GetAtt": [
+        "KnowledgeHubServiceLB3623BC5E",
+        "DNSName"
+       ]
+      }
+     ]
+    ]
+   }
+  },
+  "LoadBalancerDNS": {
+   "Description": "Load Balancer DNS Name",
+   "Value": {
+    "Fn::GetAtt": [
+     "KnowledgeHubServiceLB3623BC5E",
+     "DNSName"
+    ]
+   }
+  },
+  "ServiceURL": {
+   "Description": "KnowledgeHub Service URL",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "http://",
+      {
+       "Fn::GetAtt": [
+        "KnowledgeHubServiceLB3623BC5E",
+        "DNSName"
+       ]
+      }
+     ]
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

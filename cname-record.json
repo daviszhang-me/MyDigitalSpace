@@ -1,0 +1,30 @@
+{
+    "Changes": [
+        {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+                "Name": "blog.daviszhang.me",
+                "Type": "CNAME",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "daviszhang.me"
+                    }
+                ]
+            }
+        },
+        {
+            "Action": "CREATE",
+            "ResourceRecordSet": {
+                "Name": "portfolio.daviszhang.me",
+                "Type": "CNAME",
+                "TTL": 300,
+                "ResourceRecords": [
+                    {
+                        "Value": "daviszhang.me"
+                    }
+                ]
+            }
+        }
+    ]
+}

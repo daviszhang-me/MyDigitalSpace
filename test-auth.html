@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Test - MyDigitalSpace</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .login-form { background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .user-info { background: #e8f5e9; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .error { background: #ffebee; color: #c62828; padding: 10px; border-radius: 5px; }
+        .success { background: #e8f5e9; color: #2e7d32; padding: 10px; border-radius: 5px; }
+        button { background: #1976d2; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #1565c0; }
+        input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        .credentials { background: #fff3e0; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Authentication Test - MyDigitalSpace</h1>
+    
+    <div class="credentials">
+        <h3>Test Credentials:</h3>
+        <p><strong>Admin User:</strong> davis.zhangxi@gmail.com / xinyu2011</p>
+        <p><strong>Viewer User:</strong> davis.zhangxi@outlook.com / xinyu2011</p>
+    </div>
+    
+    <div class="login-form">
+        <h3>Login Test</h3>
+        <input type="email" id="email" placeholder="Email" value="davis.zhangxi@gmail.com">
+        <input type="password" id="password" placeholder="Password" value="xinyu2011">
+        <button onclick="testLogin()">Login</button>
+        <button onclick="testProfile()">Test Profile</button>
+        <button onclick="logout()">Logout</button>
+    </div>
+    
+    <div id="result"></div>
+    <div id="userInfo"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        let currentToken = localStorage.getItem('test_auth_token');
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentToken = data.data.token;
+                    localStorage.setItem('test_auth_token', currentToken);
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Login Successful!</h4>
+                            <p>Welcome, ${data.data.user.name}</p>
+                        </div>
+                    `;
+                    
+                    displayUserInfo(data.data.user);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Login Failed: ${data.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testProfile() {
+            if (!currentToken) {
+                document.getElementById('result').innerHTML = '<div class="error">❌ Please login first</div>';
+                return;
+            }
+            
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `<div class="success">✅ Profile fetched successfully!</div>`;
+                    displayUserInfo(data.data.user);
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Profile Failed: ${data.message}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function displayUserInfo(user) {
+            const userInfoDiv = document.getElementById('userInfo');
+            
+            userInfoDiv.innerHTML = `
+                <div class="user-info">
+                    <h4>👤 User Information</h4>
+                    <p><strong>ID:</strong> ${user.id}</p>
+                    <p><strong>Name:</strong> ${user.name}</p>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Role:</strong> <span style="background: ${user.role === 'admin' ? '#4caf50' : '#ff9800'}; color: white; padding: 2px 8px; border-radius: 3px;">${user.role}</span></p>
+                    <p><strong>Can View All Notes:</strong> ✅ Yes (All users can view all notes)</p>
+                    <p><strong>Can Create/Edit Notes:</strong> ${user.can_create_notes || user.role === 'admin' ? '✅ Yes' : '❌ No (Read-only)'}</p>
+                    <p><strong>Manage Categories Access:</strong> ${user.role === 'admin' ? '✅ Yes (Admin only)' : '❌ No (Non-admin)'}</p>
+                </div>
+            `;
+        }
+        
+        function logout() {
+            currentToken = null;
+            localStorage.removeItem('test_auth_token');
+            document.getElementById('result').innerHTML = '<div class="success">✅ Logged out</div>';
+            document.getElementById('userInfo').innerHTML = '';
+        }
+        
+        // Test if token exists on load
+        if (currentToken) {
+            testProfile();
+        }
+    </script>
+</body>
+</html>
