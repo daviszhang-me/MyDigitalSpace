@@ -248,8 +248,17 @@ jobs:
     
     - name: Setup SSH key
       run: |
+        # Create SSH directory and known_hosts file
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        touch ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+        
+        # Setup private key
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /tmp/ssh_key
         chmod 600 /tmp/ssh_key
+        
+        # Add server to known hosts
         ssh-keyscan -H ${{ steps.get-ip.outputs.instance-ip }} >> ~/.ssh/known_hosts
     
     - name: Deploy to EC2
