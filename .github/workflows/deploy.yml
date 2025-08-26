@@ -191,10 +191,17 @@ jobs:
                 root /var/www/MyDigitalSpace;
                 try_files \$uri \$uri/ /index.html;
                 
-                # Cache static assets
+                # Cache static assets (exclude HTML)
                 location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)\$ {
-                    expires 1y;
-                    add_header Cache-Control "public, immutable";
+                    expires 1h;
+                    add_header Cache-Control "public, max-age=3600";
+                }
+                
+                # Don't cache HTML files
+                location ~* \.(html|htm)\$ {
+                    expires -1;
+                    add_header Cache-Control "no-cache, no-store, must-revalidate";
+                    add_header Pragma "no-cache";
                 }
             }
             
