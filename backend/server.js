@@ -12,6 +12,7 @@ dotenv.config();
 const { testConnection } = require('./config/database');
 const authRoutes = require('./routes/auth');
 const notesRoutes = require('./routes/notes');
+const workflowRoutes = require('./routes/workflows');
 
 // Initialize Express app
 const app = express();
@@ -98,6 +99,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
+app.use('/api/workflows', workflowRoutes);
 
 // API documentation endpoint
 app.get('/api', (req, res) => {
@@ -120,6 +122,18 @@ app.get('/api', (req, res) => {
                 'DELETE /api/notes/:id': 'Delete note (requires auth)',
                 'POST /api/notes/:id/duplicate': 'Duplicate note (requires auth)',
                 'GET /api/notes/stats/summary': 'Get user statistics (requires auth)'
+            },
+            workflows: {
+                'GET /api/workflows': 'Get all user workflows with filtering (requires auth)',
+                'GET /api/workflows/:id': 'Get specific workflow with steps (requires auth)',
+                'POST /api/workflows': 'Create new workflow (requires auth)',
+                'PUT /api/workflows/:id': 'Update workflow (requires auth)',
+                'DELETE /api/workflows/:id': 'Delete workflow (requires auth)',
+                'POST /api/workflows/:id/steps': 'Create workflow step (requires auth)',
+                'PUT /api/workflows/:id/steps/:stepId': 'Update workflow step (requires auth)',
+                'DELETE /api/workflows/:id/steps/:stepId': 'Delete workflow step (requires auth)',
+                'POST /api/workflows/:id/attachments': 'Attach note/url to workflow (requires auth)',
+                'GET /api/workflows/stats/summary': 'Get workflow statistics (requires auth)'
             }
         },
         headers: {

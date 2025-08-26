@@ -2,14 +2,19 @@ class PersonalWebsite {
     constructor() {
         this.currentUser = null;
         this.notes = [];
+        this.workflows = [];
         this.currentFilter = 'all';
+        this.currentWorkflowFilter = 'all';
         this.editingNoteId = null;
-        this.currentSection = 'personal'; // 'personal' or 'knowledge'
+        this.editingWorkflowId = null;
+        this.currentSection = 'personal'; // 'personal', 'knowledge', or 'workflow'
         this.currentPersonalPage = 'home';
         this.activeTagFilters = [];
         this.allTags = new Set();
+        this.allWorkflowTags = new Set();
         this.isAuthenticated = false;
         this.authToken = localStorage.getItem('knowledgehub_auth_token');
+        this.workflowStepCounter = 0;
         // Auto-detect API base URL based on current domain
         this.apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:3001/api'
@@ -20,6 +25,7 @@ class PersonalWebsite {
 
     async init() {
         this.setupEventListeners();
+        this.setupWorkflowEventListeners();
         await this.checkAuthStatus();
         
         // Always load notes for everyone (public access)
@@ -29,6 +35,14 @@ class PersonalWebsite {
         this.updateCategoryCounts();
         this.updateTagFilters();
         this.updateKnowledgeStats();
+        
+        // Load workflows if authenticated
+        if (this.isAuthenticated) {
+            await this.loadWorkflows();
+            this.updateAllWorkflowTags();
+            this.renderWorkflows();
+            this.updateWorkflowStats();
+        }
         
         // Update authentication UI
         this.updateAuthUI();
@@ -363,8 +377,16 @@ class PersonalWebsite {
     // Personal website navigation methods
     showPersonalSection() {
         this.currentSection = 'personal';
+        
+        // Hide all content sections first
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.add('hidden');
+        });
+        
+        // Show personal content
         document.getElementById('personalContent').classList.remove('hidden');
-        document.getElementById('knowledgeContent').classList.add('hidden');
+        
+        // Show personal navigation, hide others
         document.getElementById('personalSection').classList.remove('hidden');
         document.getElementById('knowledgeSection').classList.add('hidden');
         
@@ -374,7 +396,7 @@ class PersonalWebsite {
         // Update header
         document.getElementById('mainHeader').innerHTML = `
             <h2>Welcome to My Digital Space</h2>
-            <p>Software Developer, Problem Solver & Lifelong Learner</p>
+            <p>AI-Powered Engineer • Prototype Builder • Claude Code Explorer</p>
         `;
         
         // Show the current personal page
@@ -418,6 +440,25 @@ class PersonalWebsite {
     showPersonalPage(pageId) {
         this.currentPersonalPage = pageId;
         
+        // Handle special sections
+        if (pageId === 'knowledgehub') {
+            this.showKnowledgeSection('all');
+            return;
+        }
+        
+        if (pageId === 'workflowhub') {
+            this.showWorkflowSection();
+            return;
+        }
+        
+        // Hide all content sections
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.add('hidden');
+        });
+        
+        // Show personal content
+        document.getElementById('personalContent').classList.remove('hidden');
+        
         // Hide all personal cards
         document.querySelectorAll('.personal-card').forEach(card => {
             card.classList.add('hidden');
@@ -431,6 +472,21 @@ class PersonalWebsite {
             item.classList.remove('active');
         });
         document.querySelector(`[data-section="${pageId}"]`).classList.add('active');
+
+        // Update main header
+        const header = document.getElementById('mainHeader');
+        const titles = {
+            'home': { title: 'Welcome to My Digital Space', subtitle: 'Software Developer, Problem Solver & Lifelong Learner' },
+            'about': { title: 'About Me', subtitle: 'Technology leader with 20+ years of experience' },
+            'projects': { title: 'Featured Projects', subtitle: 'Showcasing innovation and technical expertise' },
+            'contact': { title: 'Get In Touch', subtitle: 'Let\'s connect and discuss opportunities' }
+        };
+        
+        const pageInfo = titles[pageId] || titles['home'];
+        header.innerHTML = `
+            <h2>${pageInfo.title}</h2>
+            <p>${pageInfo.subtitle}</p>
+        `;
     }
 
     filterByCategory(category) {
@@ -1351,8 +1407,22 @@ class PersonalWebsite {
 
     goToHomepage() {
         // Navigate back to personal website
+        console.log('Going to homepage...');
+        
+        // Reset current section and page state FIRST
+        this.currentSection = 'personal';
+        this.currentPersonalPage = 'home';
+        
+        // Force show personal section first
         this.showPersonalSection();
-        this.showPersonalPage('home');
+        
+        // Ensure navigation states are correct
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Don't set any navigation item as active for home
+        console.log('Homepage navigation complete');
     }
 
     toggleMobileNav() {
@@ -1461,6 +1531,479 @@ class PersonalWebsite {
             authLogin.classList.remove('hidden');
         }
     }
+
+    // Workflow Management Methods
+    async loadWorkflows() {
+        try {
+            const response = await this.apiRequest('/workflows', 'GET');
+            if (response.success) {
+                this.workflows = response.data.workflows || [];
+            }
+        } catch (error) {
+            console.error('Error loading workflows:', error);
+            this.workflows = [];
+        }
+    }
+
+    async saveWorkflow(workflowData) {
+        try {
+            const url = this.editingWorkflowId ? `/workflows/${this.editingWorkflowId}` : '/workflows';
+            const method = this.editingWorkflowId ? 'PUT' : 'POST';
+            
+            const response = await this.apiRequest(url, method, workflowData);
+            
+            if (response.success) {
+                if (this.editingWorkflowId) {
+                    const index = this.workflows.findIndex(w => w.id == this.editingWorkflowId);
+                    if (index !== -1) {
+                        this.workflows[index] = response.data.workflow;
+                    }
+                } else {
+                    this.workflows.unshift(response.data.workflow);
+                }
+                
+                this.renderWorkflows();
+                this.updateWorkflowStats();
+                this.closeWorkflowModal();
+                
+                return true;
+            } else {
+                throw new Error(response.message || 'Failed to save workflow');
+            }
+        } catch (error) {
+            console.error('Error saving workflow:', error);
+            alert('Failed to save workflow: ' + error.message);
+            return false;
+        }
+    }
+
+    async deleteWorkflow(workflowId) {
+        if (!confirm('Are you sure you want to delete this workflow?')) {
+            return;
+        }
+
+        try {
+            const response = await this.apiRequest(`/workflows/${workflowId}`, 'DELETE');
+            
+            if (response.success) {
+                this.workflows = this.workflows.filter(w => w.id != workflowId);
+                this.renderWorkflows();
+                this.updateWorkflowStats();
+            } else {
+                throw new Error(response.message || 'Failed to delete workflow');
+            }
+        } catch (error) {
+            console.error('Error deleting workflow:', error);
+            alert('Failed to delete workflow: ' + error.message);
+        }
+    }
+
+    renderWorkflows() {
+        const workflowsGrid = document.getElementById('workflowsGrid');
+        
+        if (!workflowsGrid) {
+            console.warn('Workflows grid not found');
+            return;
+        }
+
+        if (this.workflows.length === 0) {
+            workflowsGrid.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #666;">
+                    <i class="fas fa-project-diagram" style="font-size: 64px; margin-bottom: 20px; opacity: 0.3;"></i>
+                    <h3>No workflows yet</h3>
+                    <p>Create your first workflow to get started with organizing your processes.</p>
+                    <button onclick="openWorkflowModal()" style="margin-top: 20px; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-plus"></i> Create First Workflow
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        workflowsGrid.innerHTML = this.workflows.map(workflow => {
+            const priorityColors = {
+                urgent: '#e74c3c',
+                high: '#f39c12',
+                medium: '#3498db',
+                low: '#95a5a6'
+            };
+
+            const statusColors = {
+                draft: '#95a5a6',
+                active: '#3498db',
+                completed: '#27ae60',
+                archived: '#7f8c8d'
+            };
+
+            const progressPercentage = workflow.steps && workflow.steps.length > 0 
+                ? Math.round((workflow.steps.filter(step => step.status === 'completed').length / workflow.steps.length) * 100)
+                : 0;
+
+            return `
+                <div class="workflow-card" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.3s; cursor: pointer; border-left: 4px solid ${priorityColors[workflow.priority]};" onclick="showWorkflowDetail(${workflow.id})">
+                    <div class="workflow-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: #2c3e50; font-size: 18px; line-height: 1.3;">${workflow.title}</h4>
+                        <div class="workflow-actions" style="opacity: 0; transition: opacity 0.3s;">
+                            <button onclick="event.stopPropagation(); editWorkflow(${workflow.id})" style="background: none; border: none; color: #666; cursor: pointer; padding: 4px; margin-left: 4px;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); deleteWorkflow(${workflow.id})" style="background: none; border: none; color: #e74c3c; cursor: pointer; padding: 4px; margin-left: 4px;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    ${workflow.description ? `<p style="color: #666; margin-bottom: 15px; font-size: 14px; line-height: 1.4;">${workflow.description}</p>` : ''}
+                    
+                    <div class="workflow-meta" style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+                        <span style="background: ${statusColors[workflow.status]}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; text-transform: uppercase; font-weight: 500;">${workflow.status}</span>
+                        <span style="background: ${priorityColors[workflow.priority]}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; text-transform: uppercase; font-weight: 500;">${workflow.priority}</span>
+                        <span style="background: #f8f9fa; color: #666; padding: 3px 8px; border-radius: 12px; font-size: 11px;">${workflow.category}</span>
+                    </div>
+                    
+                    ${workflow.steps && workflow.steps.length > 0 ? `
+                        <div class="workflow-progress" style="margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <span style="font-size: 12px; color: #666;">Progress</span>
+                                <span style="font-size: 12px; font-weight: 600; color: #2c3e50;">${progressPercentage}%</span>
+                            </div>
+                            <div style="background: #ecf0f1; height: 6px; border-radius: 3px; overflow: hidden;">
+                                <div style="background: #27ae60; height: 100%; width: ${progressPercentage}%; transition: width 0.3s;"></div>
+                            </div>
+                            <div style="font-size: 11px; color: #999; margin-top: 3px;">${workflow.steps.filter(s => s.status === 'completed').length} of ${workflow.steps.length} steps completed</div>
+                        </div>
+                    ` : ''}
+                    
+                    ${workflow.due_date ? `
+                        <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                            <i class="fas fa-calendar"></i> Due: ${new Date(workflow.due_date).toLocaleDateString()}
+                        </div>
+                    ` : ''}
+                    
+                    ${workflow.tags && workflow.tags.length > 0 ? `
+                        <div class="workflow-tags" style="display: flex; gap: 4px; flex-wrap: wrap;">
+                            ${workflow.tags.slice(0, 3).map(tag => `<span style="background: #ecf0f1; color: #2c3e50; padding: 2px 6px; border-radius: 10px; font-size: 10px;">${tag}</span>`).join('')}
+                            ${workflow.tags.length > 3 ? `<span style="color: #999; font-size: 10px;">+${workflow.tags.length - 3} more</span>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+        // Add hover effects
+        const workflowCards = workflowsGrid.querySelectorAll('.workflow-card');
+        workflowCards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+                const actions = card.querySelector('.workflow-actions');
+                if (actions) actions.style.opacity = '1';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+                const actions = card.querySelector('.workflow-actions');
+                if (actions) actions.style.opacity = '0';
+            });
+        });
+    }
+
+    updateAllWorkflowTags() {
+        this.allWorkflowTags.clear();
+        this.workflows.forEach(workflow => {
+            if (workflow.tags && Array.isArray(workflow.tags)) {
+                workflow.tags.forEach(tag => this.allWorkflowTags.add(tag));
+            }
+        });
+    }
+
+    updateWorkflowStats() {
+        if (!this.isAuthenticated) return;
+
+        const stats = {
+            total: this.workflows.length,
+            active: this.workflows.filter(w => w.status === 'active').length,
+            completed: this.workflows.filter(w => w.status === 'completed').length,
+            overdue: this.workflows.filter(w => w.due_date && new Date(w.due_date) < new Date() && w.status !== 'completed').length
+        };
+
+        // Update stats in WorkflowHub intro
+        const totalElement = document.getElementById('totalWorkflows');
+        const activeElement = document.getElementById('activeWorkflows');
+        const completedElement = document.getElementById('completedWorkflows');
+
+        if (totalElement) totalElement.textContent = stats.total;
+        if (activeElement) activeElement.textContent = stats.active;
+        if (completedElement) completedElement.textContent = stats.completed;
+    }
+
+    showWorkflowSection() {
+        // Hide all content sections
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.add('hidden');
+        });
+
+        // Show workflow content
+        document.getElementById('workflowContent').classList.remove('hidden');
+        
+        // Update navigation
+        document.querySelectorAll('.category-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector('[data-section="workflowhub"]').classList.add('active');
+
+        // Update header
+        const header = document.getElementById('mainHeader');
+        header.innerHTML = `
+            <h2>WorkflowHub</h2>
+            <p>Organize and track your workflows and processes</p>
+        `;
+
+        this.currentSection = 'workflow';
+        
+        // Load workflows if authenticated
+        if (this.isAuthenticated && this.workflows.length === 0) {
+            this.loadWorkflows();
+        }
+    }
+
+    openWorkflowModal() {
+        if (!this.isAuthenticated) {
+            alert('Please login to create workflows.');
+            return;
+        }
+
+        this.editingWorkflowId = null;
+        this.workflowStepCounter = 0;
+        document.getElementById('workflowModalTitle').textContent = 'Create New Workflow';
+        document.getElementById('workflowForm').reset();
+        document.getElementById('stepsList').innerHTML = '';
+        document.getElementById('workflowModal').classList.add('active');
+    }
+
+    closeWorkflowModal() {
+        document.getElementById('workflowModal').classList.remove('active');
+        document.getElementById('workflowForm').reset();
+        this.editingWorkflowId = null;
+        this.workflowStepCounter = 0;
+    }
+
+    addWorkflowStep() {
+        const stepsList = document.getElementById('stepsList');
+        const stepId = ++this.workflowStepCounter;
+        
+        const stepDiv = document.createElement('div');
+        stepDiv.className = 'workflow-step';
+        stepDiv.style.cssText = 'margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: white;';
+        
+        stepDiv.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <strong>Step ${stepId}</strong>
+                <button type="button" onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: #e74c3c; cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <input type="text" placeholder="Step title" required style="width: 100%; padding: 6px; margin-bottom: 6px; border: 1px solid #ddd; border-radius: 3px;">
+            <textarea placeholder="Step description (optional)" style="width: 100%; padding: 6px; height: 60px; border: 1px solid #ddd; border-radius: 3px; resize: vertical;"></textarea>
+        `;
+        
+        stepsList.appendChild(stepDiv);
+    }
+
+    async setupWorkflowEventListeners() {
+        // Workflow form submission
+        const workflowForm = document.getElementById('workflowForm');
+        if (workflowForm) {
+            workflowForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleWorkflowFormSubmit();
+            });
+        }
+
+        // Workflow filters
+        const statusFilter = document.getElementById('workflowStatusFilter');
+        const priorityFilter = document.getElementById('workflowPriorityFilter');
+        const searchInput = document.getElementById('workflowSearch');
+
+        if (statusFilter) {
+            statusFilter.addEventListener('change', () => this.applyWorkflowFilters());
+        }
+        if (priorityFilter) {
+            priorityFilter.addEventListener('change', () => this.applyWorkflowFilters());
+        }
+        if (searchInput) {
+            searchInput.addEventListener('input', () => this.applyWorkflowFilters());
+        }
+    }
+
+    async handleWorkflowFormSubmit() {
+        const formData = {
+            title: document.getElementById('workflowTitle').value.trim(),
+            description: document.getElementById('workflowDescription').value.trim(),
+            category: document.getElementById('workflowCategory').value,
+            priority: document.getElementById('workflowPriority').value,
+            due_date: document.getElementById('workflowDueDate').value || null,
+            tags: document.getElementById('workflowTags').value.split(',').map(tag => tag.trim()).filter(tag => tag),
+            steps: []
+        };
+
+        // Collect workflow steps
+        const stepElements = document.querySelectorAll('.workflow-step');
+        stepElements.forEach((stepElement, index) => {
+            const titleInput = stepElement.querySelector('input[type="text"]');
+            const descriptionTextarea = stepElement.querySelector('textarea');
+            
+            if (titleInput && titleInput.value.trim()) {
+                formData.steps.push({
+                    title: titleInput.value.trim(),
+                    description: descriptionTextarea ? descriptionTextarea.value.trim() : '',
+                    step_order: index
+                });
+            }
+        });
+
+        await this.saveWorkflow(formData);
+    }
+
+    applyWorkflowFilters() {
+        const statusFilter = document.getElementById('workflowStatusFilter')?.value || '';
+        const priorityFilter = document.getElementById('workflowPriorityFilter')?.value || '';
+        const searchQuery = document.getElementById('workflowSearch')?.value.toLowerCase() || '';
+
+        let filteredWorkflows = [...this.workflows];
+
+        // Apply status filter
+        if (statusFilter) {
+            filteredWorkflows = filteredWorkflows.filter(w => w.status === statusFilter);
+        }
+
+        // Apply priority filter
+        if (priorityFilter) {
+            filteredWorkflows = filteredWorkflows.filter(w => w.priority === priorityFilter);
+        }
+
+        // Apply search filter
+        if (searchQuery) {
+            filteredWorkflows = filteredWorkflows.filter(w => 
+                w.title.toLowerCase().includes(searchQuery) ||
+                (w.description && w.description.toLowerCase().includes(searchQuery)) ||
+                (w.tags && w.tags.some(tag => tag.toLowerCase().includes(searchQuery)))
+            );
+        }
+
+        // Temporarily store original workflows and render filtered ones
+        const originalWorkflows = this.workflows;
+        this.workflows = filteredWorkflows;
+        this.renderWorkflows();
+        this.workflows = originalWorkflows;
+    }
+
+    async editWorkflow(workflowId) {
+        try {
+            const response = await this.apiRequest(`/workflows/${workflowId}`, 'GET');
+            if (response.success) {
+                const workflow = response.data.workflow;
+                
+                this.editingWorkflowId = workflowId;
+                document.getElementById('workflowModalTitle').textContent = 'Edit Workflow';
+                
+                // Populate form fields
+                document.getElementById('workflowTitle').value = workflow.title || '';
+                document.getElementById('workflowDescription').value = workflow.description || '';
+                document.getElementById('workflowCategory').value = workflow.category || 'general';
+                document.getElementById('workflowPriority').value = workflow.priority || 'medium';
+                document.getElementById('workflowTags').value = (workflow.tags || []).join(', ');
+                
+                if (workflow.due_date) {
+                    const date = new Date(workflow.due_date);
+                    document.getElementById('workflowDueDate').value = date.toISOString().slice(0, 16);
+                }
+
+                // Populate steps
+                const stepsList = document.getElementById('stepsList');
+                stepsList.innerHTML = '';
+                this.workflowStepCounter = 0;
+                
+                if (workflow.steps && workflow.steps.length > 0) {
+                    workflow.steps.forEach(step => {
+                        this.addWorkflowStep();
+                        const stepElement = stepsList.lastElementChild;
+                        const titleInput = stepElement.querySelector('input[type="text"]');
+                        const descriptionTextarea = stepElement.querySelector('textarea');
+                        
+                        if (titleInput) titleInput.value = step.title || '';
+                        if (descriptionTextarea) descriptionTextarea.value = step.description || '';
+                    });
+                }
+
+                document.getElementById('workflowModal').classList.add('active');
+            }
+        } catch (error) {
+            console.error('Error loading workflow for edit:', error);
+            alert('Failed to load workflow for editing');
+        }
+    }
+
+    async showWorkflowDetail(workflowId) {
+        try {
+            const response = await this.apiRequest(`/workflows/${workflowId}`, 'GET');
+            if (response.success) {
+                const workflow = response.data.workflow;
+                this.currentWorkflowDetail = workflow;
+                
+                // Populate modal
+                document.getElementById('workflowDetailTitle').textContent = workflow.title;
+                document.getElementById('workflowDetailCategory').textContent = workflow.category;
+                document.getElementById('workflowDetailPriority').textContent = workflow.priority;
+                document.getElementById('workflowDetailStatus').textContent = workflow.status;
+                document.getElementById('workflowDetailDate').textContent = new Date(workflow.created_at).toLocaleDateString();
+                document.getElementById('workflowDetailDescription').textContent = workflow.description || 'No description provided';
+                
+                // Render steps
+                const stepsContainer = document.getElementById('workflowDetailSteps');
+                if (workflow.steps && workflow.steps.length > 0) {
+                    stepsContainer.innerHTML = workflow.steps.map((step, index) => `
+                        <div style="border: 1px solid #e9ecef; border-radius: 6px; padding: 15px; margin-bottom: 10px; background: ${step.status === 'completed' ? '#f8f9fa' : 'white'};">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="color: #2c3e50;">Step ${index + 1}: ${step.title}</strong>
+                                <span style="background: ${step.status === 'completed' ? '#27ae60' : step.status === 'in_progress' ? '#f39c12' : '#95a5a6'}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; text-transform: uppercase;">
+                                    ${step.status}
+                                </span>
+                            </div>
+                            ${step.description ? `<p style="margin: 0; color: #666; font-size: 14px;">${step.description}</p>` : ''}
+                        </div>
+                    `).join('');
+                } else {
+                    stepsContainer.innerHTML = '<p style="color: #999; font-style: italic;">No steps defined for this workflow.</p>';
+                }
+                
+                // Render tags
+                const tagsContainer = document.getElementById('workflowDetailTags');
+                if (workflow.tags && workflow.tags.length > 0) {
+                    tagsContainer.innerHTML = workflow.tags.map(tag => 
+                        `<span style="background: #f8f9fa; color: #495057; border: 1px solid #dee2e6; padding: 4px 8px; border-radius: 12px; font-size: 12px; margin-right: 6px; margin-bottom: 6px; display: inline-block;">${tag}</span>`
+                    ).join('');
+                } else {
+                    tagsContainer.innerHTML = '<p style="color: #999; font-style: italic;">No tags</p>';
+                }
+
+                document.getElementById('workflowDetailModal').classList.add('active');
+            }
+        } catch (error) {
+            console.error('Error loading workflow detail:', error);
+            alert('Failed to load workflow details');
+        }
+    }
+
+    closeWorkflowDetail() {
+        document.getElementById('workflowDetailModal').classList.remove('active');
+        this.currentWorkflowDetail = null;
+    }
+
+    editWorkflowFromDetail() {
+        if (this.currentWorkflowDetail) {
+            this.closeWorkflowDetail();
+            this.editWorkflow(this.currentWorkflowDetail.id);
+        }
+    }
 }
 
 // Quick Login Functions
@@ -1542,6 +2085,42 @@ function showSection(sectionId) {
 
 function showKnowledgeSection(category) {
     window.personalWebsite.showKnowledgeSection(category);
+}
+
+function showWorkflowSection() {
+    window.personalWebsite.showWorkflowSection();
+}
+
+function openWorkflowModal() {
+    window.personalWebsite.openWorkflowModal();
+}
+
+function closeWorkflowModal() {
+    window.personalWebsite.closeWorkflowModal();
+}
+
+function addWorkflowStep() {
+    window.personalWebsite.addWorkflowStep();
+}
+
+function editWorkflow(workflowId) {
+    window.personalWebsite.editWorkflow(workflowId);
+}
+
+function deleteWorkflow(workflowId) {
+    window.personalWebsite.deleteWorkflow(workflowId);
+}
+
+function showWorkflowDetail(workflowId) {
+    window.personalWebsite.showWorkflowDetail(workflowId);
+}
+
+function closeWorkflowDetail() {
+    window.personalWebsite.closeWorkflowDetail();
+}
+
+function editWorkflowFromDetail() {
+    window.personalWebsite.editWorkflowFromDetail();
 }
 
 async function openModal() {

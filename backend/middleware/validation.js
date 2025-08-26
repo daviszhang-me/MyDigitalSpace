@@ -116,10 +116,126 @@ const validateNotesQuery = (req, res, next) => {
     next();
 };
 
+// Workflow validation
+const validateWorkflow = (req, res, next) => {
+    const schema = Joi.object({
+        title: Joi.string().min(1).max(500).trim().required(),
+        description: Joi.string().max(10000).trim().allow(''),
+        category: Joi.string().max(50).default('general'),
+        priority: Joi.string().valid('low', 'medium', 'high', 'urgent').default('medium'),
+        tags: Joi.array().items(Joi.string().min(1).max(50).trim()).max(20).default([]),
+        due_date: Joi.date().iso().allow(null),
+        steps: Joi.array().items(
+            Joi.object({
+                title: Joi.string().min(1).max(500).trim().required(),
+                description: Joi.string().max(5000).trim().allow(''),
+                due_date: Joi.date().iso().allow(null),
+                assignee: Joi.string().max(255).trim().allow('')
+            })
+        ).max(50).default([])
+    });
+
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message
+        });
+    }
+
+    // Clean up tags
+    req.body = {
+        ...value,
+        tags: [...new Set(value.tags.filter(tag => tag && tag.trim()))].slice(0, 20)
+    };
+
+    next();
+};
+
+// Workflow update validation (all fields optional)
+const validateWorkflowUpdate = (req, res, next) => {
+    const schema = Joi.object({
+        title: Joi.string().min(1).max(500).trim(),
+        description: Joi.string().max(10000).trim().allow(''),
+        category: Joi.string().max(50),
+        priority: Joi.string().valid('low', 'medium', 'high', 'urgent'),
+        status: Joi.string().valid('draft', 'active', 'completed', 'archived'),
+        tags: Joi.array().items(Joi.string().min(1).max(50).trim()).max(20),
+        due_date: Joi.date().iso().allow(null)
+    }).min(1); // At least one field must be present
+
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message
+        });
+    }
+
+    // Clean up tags if provided
+    if (value.tags) {
+        req.body.tags = [...new Set(value.tags.filter(tag => tag && tag.trim()))].slice(0, 20);
+    }
+
+    next();
+};
+
+// Workflow step validation
+const validateWorkflowStep = (req, res, next) => {
+    const schema = Joi.object({
+        title: Joi.string().min(1).max(500).trim().required(),
+        description: Joi.string().max(5000).trim().allow(''),
+        step_order: Joi.number().integer().min(0).default(0),
+        due_date: Joi.date().iso().allow(null),
+        assignee: Joi.string().max(255).trim().allow('')
+    });
+
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message
+        });
+    }
+
+    req.body = value;
+    next();
+};
+
+// Query parameters validation for workflows list
+const validateWorkflowsQuery = (req, res, next) => {
+    const schema = Joi.object({
+        category: Joi.string().max(50),
+        tags: Joi.string(), // Comma-separated tags
+        search: Joi.string().max(100),
+        status: Joi.string().valid('draft', 'active', 'completed', 'archived'),
+        priority: Joi.string().valid('low', 'medium', 'high', 'urgent'),
+        limit: Joi.number().integer().min(1).max(100).default(50),
+        offset: Joi.number().integer().min(0).default(0),
+        sort: Joi.string().valid('created_at', 'updated_at', 'title', 'due_date', 'priority', 'status').default('updated_at'),
+        order: Joi.string().valid('asc', 'desc').default('desc')
+    });
+
+    const { error, value } = schema.validate(req.query);
+    if (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message
+        });
+    }
+
+    req.query = value;
+    next();
+};
+
 module.exports = {
     validateRegistration,
     validateLogin,
     validateNote,
     validateNoteUpdate,
-    validateNotesQuery
+    validateNotesQuery,
+    validateWorkflow,
+    validateWorkflowUpdate,
+    validateWorkflowStep,
+    validateWorkflowsQuery
 };

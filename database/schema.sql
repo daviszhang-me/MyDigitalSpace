@@ -67,7 +67,103 @@ CREATE TRIGGER update_notes_updated_at
 -- INSERT INTO users (email, name, password_hash) 
 -- VALUES ('demo@knowledgehub.com', 'Demo User', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LwlAl2nH8vK5N3RYG');
 
--- View for user statistics
+-- Workflows table for workflow management
+CREATE TABLE workflows (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    category VARCHAR(50) DEFAULT 'general',
+    status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'completed', 'archived')),
+    priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    tags TEXT[] DEFAULT '{}',
+    due_date TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    is_template BOOLEAN DEFAULT false,
+    template_name VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Workflow steps table for step-by-step processes
+CREATE TABLE workflow_steps (
+    id BIGSERIAL PRIMARY KEY,
+    workflow_id BIGINT NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'skipped', 'blocked')),
+    step_order INTEGER NOT NULL DEFAULT 0,
+    due_date TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    assignee VARCHAR(255),
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Workflow attachments table for linking notes and resources
+CREATE TABLE workflow_attachments (
+    id BIGSERIAL PRIMARY KEY,
+    workflow_id BIGINT NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+    attachment_type VARCHAR(20) NOT NULL CHECK (attachment_type IN ('note', 'url', 'file')),
+    attachment_id BIGINT, -- References notes.id when type is 'note'
+    url TEXT,
+    title TEXT,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Workflow templates table for pre-defined workflows
+CREATE TABLE workflow_templates (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) DEFAULT 'general',
+    tags TEXT[] DEFAULT '{}',
+    is_public BOOLEAN DEFAULT false,
+    template_data JSONB NOT NULL, -- Stores workflow and steps structure
+    usage_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for workflow tables
+CREATE INDEX idx_workflows_user_id ON workflows(user_id);
+CREATE INDEX idx_workflows_status ON workflows(status);
+CREATE INDEX idx_workflows_category ON workflows(category);
+CREATE INDEX idx_workflows_due_date ON workflows(due_date);
+CREATE INDEX idx_workflows_created_at ON workflows(created_at DESC);
+CREATE INDEX idx_workflows_tags ON workflows USING GIN(tags);
+CREATE INDEX idx_workflows_is_template ON workflows(is_template);
+
+CREATE INDEX idx_workflow_steps_workflow_id ON workflow_steps(workflow_id);
+CREATE INDEX idx_workflow_steps_status ON workflow_steps(status);
+CREATE INDEX idx_workflow_steps_step_order ON workflow_steps(step_order);
+CREATE INDEX idx_workflow_steps_due_date ON workflow_steps(due_date);
+
+CREATE INDEX idx_workflow_attachments_workflow_id ON workflow_attachments(workflow_id);
+CREATE INDEX idx_workflow_attachments_type ON workflow_attachments(attachment_type);
+CREATE INDEX idx_workflow_attachments_attachment_id ON workflow_attachments(attachment_id);
+
+CREATE INDEX idx_workflow_templates_user_id ON workflow_templates(user_id);
+CREATE INDEX idx_workflow_templates_category ON workflow_templates(category);
+CREATE INDEX idx_workflow_templates_is_public ON workflow_templates(is_public);
+
+-- Apply update triggers to workflow tables
+CREATE TRIGGER update_workflows_updated_at 
+    BEFORE UPDATE ON workflows 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_workflow_steps_updated_at 
+    BEFORE UPDATE ON workflow_steps 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_workflow_templates_updated_at 
+    BEFORE UPDATE ON workflow_templates 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- View for user statistics (updated to include workflows)
 CREATE VIEW user_note_stats AS
 SELECT 
     u.id as user_id,
@@ -81,4 +177,22 @@ SELECT
     MAX(n.updated_at) as last_note_update
 FROM users u
 LEFT JOIN notes n ON u.id = n.user_id AND n.is_archived = false
+GROUP BY u.id, u.name;
+
+-- View for workflow statistics
+CREATE VIEW user_workflow_stats AS
+SELECT 
+    u.id as user_id,
+    u.name,
+    COUNT(w.id) as total_workflows,
+    COUNT(CASE WHEN w.status = 'draft' THEN 1 END) as draft_workflows,
+    COUNT(CASE WHEN w.status = 'active' THEN 1 END) as active_workflows,
+    COUNT(CASE WHEN w.status = 'completed' THEN 1 END) as completed_workflows,
+    COUNT(CASE WHEN w.status = 'archived' THEN 1 END) as archived_workflows,
+    COUNT(CASE WHEN w.priority = 'urgent' THEN 1 END) as urgent_workflows,
+    COUNT(CASE WHEN w.priority = 'high' THEN 1 END) as high_priority_workflows,
+    COUNT(DISTINCT unnest(w.tags)) as unique_workflow_tags,
+    MAX(w.updated_at) as last_workflow_update
+FROM users u
+LEFT JOIN workflows w ON u.id = w.user_id AND w.status != 'archived'
 GROUP BY u.id, u.name;
