@@ -133,7 +133,7 @@ jobs:
         
         # Run database setup
         echo "🗄️ Setting up database..."
-        node scripts/setup-database.js 2>/dev/null || echo "Database initialization will happen on first run"
+        node scripts/setup-database-sqlite.js 2>/dev/null || echo "Database initialization will happen on first run"
         node scripts/add-users.js 2>/dev/null || echo "Users will be created on first run"
         
         # Install PM2 if not already installed
