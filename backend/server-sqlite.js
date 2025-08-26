@@ -99,14 +99,71 @@ const authenticateToken = async (req, res, next) => {
     }
 };
 
-// Health check
-app.get('/health', (req, res) => {
-    res.json({
-        success: true,
-        message: 'KnowledgeHub API is running (SQLite)',
-        timestamp: new Date().toISOString(),
-        version: '1.0.0-sqlite'
-    });
+// Health check with comprehensive status
+app.get('/health', async (req, res) => {
+    try {
+        // Test database connection
+        const dbTest = await query('SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"');
+        const tableCount = dbTest[0].count;
+        
+        // Check if required tables exist
+        const requiredTables = ['users', 'notes', 'workflows'];
+        const existingTables = await query(`
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name IN (${requiredTables.map(() => '?').join(',')})
+        `, requiredTables);
+        
+        const missingTables = requiredTables.filter(table => 
+            !existingTables.some(existing => existing.name === table)
+        );
+        
+        const healthStatus = {
+            success: true,
+            message: 'MyDigitalSpace API is running (SQLite)',
+            timestamp: new Date().toISOString(),
+            version: '1.2.0-sqlite',
+            database: {
+                connected: true,
+                totalTables: tableCount,
+                requiredTables: requiredTables.length,
+                missingTables: missingTables,
+                status: missingTables.length === 0 ? 'healthy' : 'degraded'
+            },
+            features: {
+                knowledgeHub: missingTables.includes('notes') ? 'unavailable' : 'available',
+                workflowHub: missingTables.includes('workflows') ? 'unavailable' : 'available',
+                authentication: missingTables.includes('users') ? 'unavailable' : 'available'
+            },
+            environment: process.env.NODE_ENV || 'development',
+            uptime: process.uptime()
+        };
+        
+        // Return 503 if critical tables are missing
+        if (missingTables.length > 0) {
+            return res.status(503).json({
+                ...healthStatus,
+                success: false,
+                message: 'Service degraded - missing database tables'
+            });
+        }
+        
+        res.json(healthStatus);
+        
+    } catch (error) {
+        console.error('Health check failed:', error);
+        res.status(503).json({
+            success: false,
+            message: 'Service unhealthy',
+            timestamp: new Date().toISOString(),
+            version: '1.2.0-sqlite',
+            database: {
+                connected: false,
+                error: error.message
+            },
+            environment: process.env.NODE_ENV || 'development',
+            uptime: process.uptime()
+        });
+    }
 });
 
 // API Info

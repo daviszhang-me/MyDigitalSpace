@@ -131,10 +131,18 @@ jobs:
         # Create database directories
         mkdir -p data database
         
-        # Run database setup
+        # Run database setup with detailed logging
         echo "🗄️ Setting up database..."
-        node scripts/setup-database-sqlite.js 2>/dev/null || echo "Database initialization will happen on first run"
-        node scripts/add-users.js 2>/dev/null || echo "Users will be created on first run"
+        if ! node scripts/setup-database-sqlite.js; then
+            echo "❌ Database setup failed!"
+            echo "📋 Attempting to check existing database..."
+            ls -la data/ 2>/dev/null || echo "No data directory found"
+            sqlite3 data/knowledgehub.db ".tables" 2>/dev/null || echo "Cannot access database"
+            exit 1
+        fi
+        
+        echo "👥 Setting up users..."
+        node scripts/add-users.js 2>&1 || echo "⚠️ User setup completed with warnings (this is normal on first run)"
         
         # Install PM2 if not already installed
         if ! command -v pm2 &> /dev/null; then
@@ -171,13 +179,38 @@ jobs:
         sudo mkdir -p /var/log/mydigitalspace
         sudo chown ubuntu:ubuntu /var/log/mydigitalspace
         
-        # Restart application
+        # Restart application with detailed monitoring
         echo "🔄 Restarting application..."
         pm2 stop mydigitalspace-backend 2>/dev/null || true
         pm2 delete mydigitalspace-backend 2>/dev/null || true
-        pm2 start ecosystem.config.js
+        
+        echo "🚀 Starting application..."
+        if ! pm2 start ecosystem.config.js; then
+            echo "❌ PM2 start failed!"
+            echo "📋 Checking PM2 status..."
+            pm2 status
+            echo "📋 Checking recent logs..."
+            pm2 logs mydigitalspace-backend --lines 20 2>/dev/null || echo "No logs available"
+            exit 1
+        fi
+        
         pm2 save
         pm2 startup ubuntu -u ubuntu --hp /home/ubuntu 2>/dev/null || true
+        
+        # Wait for application to start and verify
+        echo "⏳ Waiting for application to start..."
+        sleep 10
+        
+        if ! pm2 show mydigitalspace-backend | grep "online"; then
+            echo "❌ Application not running properly!"
+            echo "📋 PM2 status:"
+            pm2 status
+            echo "📋 Application logs:"
+            pm2 logs mydigitalspace-backend --lines 50
+            exit 1
+        fi
+        
+        echo "✅ Application started successfully!"
         
         # Setup/update Nginx configuration
         echo "🌐 Configuring Nginx..."
@@ -233,19 +266,62 @@ jobs:
         }
         NGINX_CONFIG
         
-        # Enable site and reload Nginx
+        # Enable site and reload Nginx with validation
         sudo ln -sf /etc/nginx/sites-available/mydigitalspace /etc/nginx/sites-enabled/
-        sudo nginx -t && sudo systemctl reload nginx
         
-        # Verify deployment
+        echo "🔧 Testing Nginx configuration..."
+        if ! sudo nginx -t; then
+            echo "❌ Nginx configuration test failed!"
+            echo "📋 Checking configuration file..."
+            sudo nginx -T 2>&1 | tail -20
+            exit 1
+        fi
+        
+        echo "🔄 Reloading Nginx..."
+        if ! sudo systemctl reload nginx; then
+            echo "❌ Nginx reload failed!"
+            echo "📋 Checking Nginx status..."
+            sudo systemctl status nginx
+            echo "📋 Checking Nginx logs..."
+            sudo journalctl -u nginx --lines 20 -n
+            exit 1
+        fi
+        
+        # Comprehensive deployment verification
         echo "✅ Checking application status..."
         pm2 status
         
-        # Test health endpoint
+        echo "🏥 Testing health endpoints..."
         sleep 5
-        curl -f http://localhost:3001/health || echo "Health check will be available after startup"
         
-        echo "🎉 Deployment completed successfully!"
+        # Test backend directly
+        if curl -f http://localhost:3001/health; then
+            echo "✅ Backend health check passed"
+        else
+            echo "❌ Backend health check failed!"
+            echo "📋 Backend logs:"
+            pm2 logs mydigitalspace-backend --lines 30
+            exit 1
+        fi
+        
+        # Test through Nginx
+        if curl -f http://localhost/health; then
+            echo "✅ Nginx proxy health check passed"
+        else
+            echo "❌ Nginx proxy health check failed!"
+            echo "📋 Nginx error logs:"
+            sudo tail -20 /var/log/nginx/error.log
+            exit 1
+        fi
+        
+        # Test API endpoint
+        if curl -s http://localhost/api | grep -q "success"; then
+            echo "✅ API endpoint check passed"
+        else
+            echo "⚠️ API endpoint check failed (non-critical)"
+        fi
+        
+        echo "🎉 Deployment completed successfully with full verification!"
         EOF
         
         chmod +x $TEMP_DIR/deploy-server.sh
@@ -313,19 +389,50 @@ jobs:
     - name: Verify deployment
       run: |
         # Wait for service to be ready
-        sleep 15
+        echo "⏳ Waiting for service to stabilize..."
+        sleep 20
         
-        # Test endpoints
+        # Test endpoints with detailed verification
         SERVER_IP="${{ steps.get-ip.outputs.instance-ip }}"
         echo "🔍 Testing deployment at: http://$SERVER_IP"
         
-        # Test health endpoint
-        curl -f "http://$SERVER_IP/health" || curl -f "http://$SERVER_IP:3001/health"
+        # Test health endpoint with retries
+        echo "🏥 Testing health endpoint..."
+        for i in {1..5}; do
+            if curl -f -m 10 "http://$SERVER_IP/health"; then
+                echo "✅ Health check passed on attempt $i"
+                break
+            elif curl -f -m 10 "http://$SERVER_IP:3001/health"; then
+                echo "✅ Direct backend health check passed on attempt $i"
+                break
+            else
+                echo "⚠️ Health check attempt $i failed, retrying..."
+                sleep 5
+                if [ $i -eq 5 ]; then
+                    echo "❌ All health check attempts failed!"
+                    exit 1
+                fi
+            fi
+        done
         
         # Test API endpoint
-        curl -f "http://$SERVER_IP/api" || echo "API endpoint check completed"
+        echo "🔌 Testing API endpoint..."
+        if curl -s -m 10 "http://$SERVER_IP/api" | jq -r '.message' | grep -q "KnowledgeHub"; then
+            echo "✅ API endpoint responding correctly"
+        else
+            echo "⚠️ API endpoint check failed - checking response:"
+            curl -s -m 10 "http://$SERVER_IP/api" || echo "No response received"
+        fi
         
-        echo "🎉 Deployment verification successful!"
+        # Test homepage
+        echo "🏠 Testing homepage..."
+        if curl -s -m 10 "http://$SERVER_IP/" | grep -q "AI-Powered Engineer"; then
+            echo "✅ Homepage shows updated content"
+        else
+            echo "⚠️ Homepage may still show old content (cache issue)"
+        fi
+        
+        echo "🎉 Deployment verification completed!"
     
     - name: Deployment notification
       if: always()
