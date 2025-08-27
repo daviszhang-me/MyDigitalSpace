@@ -184,6 +184,13 @@ app.get('/api', (req, res) => {
                 'POST /api/notes': 'Create note (requires auth)',
                 'PUT /api/notes/:id': 'Update note (requires auth)',
                 'DELETE /api/notes/:id': 'Delete note (requires auth)'
+            },
+            workflows: {
+                'GET /api/workflows': 'Get all workflows (public)',
+                'GET /api/workflows/:id': 'Get workflow details (public)',
+                'POST /api/workflows': 'Create workflow (requires auth)',
+                'PUT /api/workflows/:id': 'Update workflow (requires auth)',
+                'DELETE /api/workflows/:id': 'Delete workflow (requires auth)'
             }
         }
     });
@@ -703,6 +710,71 @@ app.get('/api/workflows/:id', async (req, res) => {
     } catch (error) {
         console.error('Error fetching workflow details:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch workflow details' });
+    }
+});
+
+// Update workflow endpoint 
+app.put('/api/workflows/:id', authenticateToken, async (req, res) => {
+    try {
+        const workflowId = req.params.id;
+        const userId = req.user.id;
+        const { title, description, category, priority, due_date, tags, status } = req.body;
+        
+        console.log('Updating workflow:', { workflowId, userId, title });
+        
+        // Check if workflow exists and user has permission
+        const existing = await query('SELECT * FROM workflows WHERE id = ? AND user_id = ?', [workflowId, userId]);
+        if (!existing || existing.length === 0) {
+            return res.status(404).json({ success: false, message: 'Workflow not found or access denied' });
+        }
+        
+        const result = await query(`
+            UPDATE workflows 
+            SET title = ?, description = ?, category = ?, priority = ?, due_date = ?, tags = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ?
+        `, [title, description || '', category || 'general', priority || 'medium', due_date, JSON.stringify(tags || []), status || 'active', workflowId, userId]);
+        
+        // Get updated workflow
+        const updated = await query('SELECT * FROM workflows WHERE id = ?', [workflowId]);
+        
+        res.json({
+            success: true,
+            message: 'Workflow updated successfully',
+            data: { workflow: updated[0] }
+        });
+        
+    } catch (error) {
+        console.error('Error updating workflow:', error);
+        res.status(500).json({ success: false, message: 'Failed to update workflow' });
+    }
+});
+
+// Delete workflow endpoint
+app.delete('/api/workflows/:id', authenticateToken, async (req, res) => {
+    try {
+        const workflowId = req.params.id;
+        const userId = req.user.id;
+        
+        console.log('Deleting workflow:', { workflowId, userId });
+        
+        // Check if workflow exists and user has permission
+        const existing = await query('SELECT * FROM workflows WHERE id = ? AND user_id = ?', [workflowId, userId]);
+        if (!existing || existing.length === 0) {
+            return res.status(404).json({ success: false, message: 'Workflow not found or access denied' });
+        }
+        
+        // Delete workflow (cascade will handle related records)
+        await query('DELETE FROM workflows WHERE id = ? AND user_id = ?', [workflowId, userId]);
+        
+        res.json({
+            success: true,
+            message: 'Workflow deleted successfully',
+            data: { id: workflowId }
+        });
+        
+    } catch (error) {
+        console.error('Error deleting workflow:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete workflow' });
     }
 });
 
