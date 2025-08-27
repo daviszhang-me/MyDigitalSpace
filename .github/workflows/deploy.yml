@@ -483,15 +483,41 @@ jobs:
         touch ~/.ssh/known_hosts
         chmod 600 ~/.ssh/known_hosts
         
-        # Setup private key (ensure proper format)
-        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /tmp/ssh_key
+        # Setup private key with proper formatting
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" | tr -d '\r' > /tmp/ssh_key
         chmod 600 /tmp/ssh_key
         
-        # Add server to known hosts
-        ssh-keyscan -H ${{ steps.get-ip.outputs.instance-ip }} >> ~/.ssh/known_hosts
+        # Validate SSH key format
+        if ! ssh-keygen -l -f /tmp/ssh_key >/dev/null 2>&1; then
+          echo "❌ Invalid SSH key format in secrets!"
+          echo "🔍 SSH key should be a complete private key including:"
+          echo "  -----BEGIN OPENSSH PRIVATE KEY-----"
+          echo "  (key content)"
+          echo "  -----END OPENSSH PRIVATE KEY-----"
+          exit 1
+        fi
         
-        # Test SSH connection
-        ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@${{ steps.get-ip.outputs.instance-ip }} "echo 'SSH connection successful'"
+        echo "✅ SSH key format validated"
+        
+        # Add server to known hosts with timeout
+        timeout 10 ssh-keyscan -H ${{ steps.get-ip.outputs.instance-ip }} >> ~/.ssh/known_hosts 2>/dev/null || {
+          echo "⚠️ SSH keyscan failed, but continuing..."
+        }
+        
+        # Test SSH connection with detailed error reporting
+        echo "🔍 Testing SSH connection..."
+        if ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o UserKnownHostsFile=/dev/null ubuntu@${{ steps.get-ip.outputs.instance-ip }} "echo 'SSH connection successful at $(date)'"; then
+          echo "✅ SSH connection successful!"
+        else
+          SSH_EXIT_CODE=$?
+          echo "❌ SSH connection failed with exit code: $SSH_EXIT_CODE"
+          echo "🔍 Troubleshooting info:"
+          echo "  - Server IP: ${{ steps.get-ip.outputs.instance-ip }}"
+          echo "  - SSH key fingerprint: $(ssh-keygen -l -f /tmp/ssh_key 2>/dev/null || echo 'Unable to read key')"
+          echo "  - Connection test with verbose output:"
+          ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 -v ubuntu@${{ steps.get-ip.outputs.instance-ip }} "echo 'test'" 2>&1 | head -20 || true
+          exit 1
+        fi
     
     - name: Deploy to EC2
       env:
@@ -505,14 +531,22 @@ jobs:
         
         # Upload deployment package
         echo "📤 Uploading files to server..."
-        scp -i /tmp/ssh_key -o StrictHostKeyChecking=no mydigitalspace-deploy.tar.gz ubuntu@$SERVER_IP:/tmp/
+        if ! scp -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 mydigitalspace-deploy.tar.gz ubuntu@$SERVER_IP:/tmp/; then
+          echo "❌ Failed to upload deployment package!"
+          echo "🔍 Checking if file exists locally:"
+          ls -la mydigitalspace-deploy.tar.gz
+          exit 1
+        fi
+        echo "✅ Deployment package uploaded successfully"
         
         # Execute deployment on remote server
         echo "🏗️ Setting up application on server..."
-        ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'REMOTE_COMMANDS'
+        if ! ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=60 ubuntu@$SERVER_IP << 'REMOTE_COMMANDS'
         
         set -e  # Exit on any error
+        set -x  # Print commands as they execute
         
+        echo "🔍 Starting remote deployment at $(date)"
         cd /tmp
         
         # Extract deployment package
@@ -550,7 +584,16 @@ jobs:
         # Cleanup
         rm -rf /tmp/mydigitalspace-deploy*
         
-        REMOTE_COMMANDS
+        echo "✅ Remote deployment completed successfully at $(date)"
+        
+        REMOTE_COMMANDS; then
+          echo "✅ Deployment executed successfully!"
+        else
+          echo "❌ Remote deployment failed!"
+          echo "🔍 Checking server status..."
+          ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no ubuntu@$SERVER_IP "ps aux | grep -E '(nginx|node|pm2)' | head -10" || true
+          exit 1
+        fi
         
         # Cleanup local files
         rm -f /tmp/ssh_key
@@ -564,9 +607,19 @@ jobs:
         echo "⏳ Waiting for service to stabilize..."
         sleep 20
         
-        # Test endpoints with detailed verification
         SERVER_IP="${{ steps.get-ip.outputs.instance-ip }}"
         echo "🔍 Testing deployment at: http://$SERVER_IP"
+        
+        # Test version.json endpoint specifically
+        echo "🔍 Testing version.json deployment..."
+        if curl -f -m 10 "http://$SERVER_IP/version.json" | jq -r '.version' 2>/dev/null; then
+          echo "✅ Version.json successfully deployed and accessible!"
+        else
+          echo "⚠️ Version.json test failed, checking response:"
+          curl -s "http://$SERVER_IP/version.json" | head -5 || echo "No response received"
+        fi
+        
+        # Continue with other endpoint tests
         
         # Test health endpoint with retries
         echo "🏥 Testing health endpoint..."
