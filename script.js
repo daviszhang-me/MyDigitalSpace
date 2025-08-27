@@ -1658,15 +1658,26 @@ class PersonalWebsite {
         }
 
         workflowsGrid.innerHTML = this.workflows.map(workflow => {
-            // Parse tags from JSON string to array
+            // Parse tags from JSON string to array with robust error handling
             let tags = [];
-            if (workflow.tags) {
+            if (workflow.tags !== null && workflow.tags !== undefined) {
                 try {
-                    tags = typeof workflow.tags === 'string' ? JSON.parse(workflow.tags) : workflow.tags;
+                    if (typeof workflow.tags === 'string') {
+                        // Handle JSON string
+                        tags = JSON.parse(workflow.tags);
+                    } else if (Array.isArray(workflow.tags)) {
+                        // Already an array
+                        tags = workflow.tags;
+                    } else {
+                        // Other types, convert to empty array
+                        tags = [];
+                    }
                 } catch (e) {
+                    console.warn('Failed to parse workflow tags:', workflow.tags, e);
                     tags = [];
                 }
             }
+            // Ensure tags is always an array
             workflow.tags = Array.isArray(tags) ? tags : [];
             
             const priorityColors = {
@@ -1730,7 +1741,7 @@ class PersonalWebsite {
                         </div>
                     ` : ''}
                     
-                    ${workflow.tags && workflow.tags.length > 0 ? `
+                    ${workflow.tags && Array.isArray(workflow.tags) && workflow.tags.length > 0 ? `
                         <div class="workflow-tags" style="display: flex; gap: 4px; flex-wrap: wrap;">
                             ${workflow.tags.slice(0, 3).map(tag => `<span style="background: #ecf0f1; color: #2c3e50; padding: 2px 6px; border-radius: 10px; font-size: 10px;">${tag}</span>`).join('')}
                             ${workflow.tags.length > 3 ? `<span style="color: #999; font-size: 10px;">+${workflow.tags.length - 3} more</span>` : ''}
@@ -1897,7 +1908,7 @@ class PersonalWebsite {
             category: document.getElementById('workflowCategory').value,
             priority: document.getElementById('workflowPriority').value,
             due_date: document.getElementById('workflowDueDate').value || null,
-            tags: document.getElementById('workflowTags').value.split(',').map(tag => tag.trim()).filter(tag => tag),
+            tags: (document.getElementById('workflowTags').value || '').split(',').map(tag => tag.trim()).filter(tag => tag),
             steps: []
         };
         
