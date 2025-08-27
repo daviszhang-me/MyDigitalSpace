@@ -1568,7 +1568,7 @@ class PersonalWebsite {
 
     async saveWorkflow(workflowData) {
         try {
-            const url = this.editingWorkflowId ? `/api/workflows/${this.editingWorkflowId}` : '/api/workflows';
+            const url = this.editingWorkflowId ? `/workflows/${this.editingWorkflowId}` : '/workflows';
             const method = this.editingWorkflowId ? 'PUT' : 'POST';
             
             console.log(`🌐 Making API request: ${method} ${this.apiBaseUrl}${url}`);
@@ -1976,7 +1976,7 @@ class PersonalWebsite {
 
     async editWorkflow(workflowId) {
         try {
-            const response = await this.apiRequest(`/api/workflows/${workflowId}`, 'GET');
+            const response = await this.apiRequest(`/workflows/${workflowId}`, 'GET');
             if (response.success) {
                 const workflow = response.data.workflow;
                 
@@ -3546,3 +3546,111 @@ function isValidURL(string) {
         return false;
     }
 }
+
+// Mobile Navigation Functions
+function toggleMobileNav() {
+    const sidebarContent = document.getElementById('sidebarContent');
+    const navToggle = document.getElementById('navToggle');
+    const chevron = navToggle.querySelector('.fa-chevron-right, .fa-chevron-down');
+    
+    // Toggle the active class on sidebar content
+    sidebarContent.classList.toggle('active');
+    navToggle.classList.toggle('active');
+    
+    // Update chevron direction
+    if (sidebarContent.classList.contains('active')) {
+        chevron.classList.remove('fa-chevron-right');
+        chevron.classList.add('fa-chevron-down');
+    } else {
+        chevron.classList.remove('fa-chevron-down');
+        chevron.classList.add('fa-chevron-right');
+    }
+}
+
+// Auto-show sidebar on desktop, hide on mobile by default
+function initializeMobileNav() {
+    const sidebarContent = document.getElementById('sidebarContent');
+    const navToggle = document.getElementById('navToggle');
+    const chevron = navToggle?.querySelector('.fa-chevron-right, .fa-chevron-down');
+    
+    if (!sidebarContent || !navToggle) return;
+    
+    // Check if we're on mobile
+    if (window.innerWidth <= 768) {
+        // Mobile: hide by default
+        sidebarContent.classList.remove('active');
+        navToggle.classList.remove('active');
+        
+        // Set chevron to right
+        if (chevron) {
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-right');
+        }
+    } else {
+        // Desktop: show by default
+        sidebarContent.classList.add('active');
+        navToggle.classList.add('active');
+        
+        // Set chevron to down
+        if (chevron) {
+            chevron.classList.remove('fa-chevron-right');
+            chevron.classList.add('fa-chevron-down');
+        }
+    }
+}
+
+// Handle window resize
+function handleResize() {
+    initializeMobileNav();
+}
+
+// Add touch event handling for better mobile interaction
+function addTouchEventHandling() {
+    // Add touch handling for workflow cards on mobile
+    const workflowCards = document.querySelectorAll('.workflow-card');
+    workflowCards.forEach(card => {
+        // Add touch feedback
+        card.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.98)';
+        }, { passive: true });
+        
+        card.addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        }, { passive: true });
+        
+        card.addEventListener('touchcancel', function() {
+            this.style.transform = 'scale(1)';
+        }, { passive: true });
+    });
+}
+
+// Initialize mobile navigation when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeMobileNav();
+    window.addEventListener('resize', handleResize);
+    
+    // Add touch event handling
+    addTouchEventHandling();
+    
+    // Re-add touch events when workflows are re-rendered
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                // Check if workflow cards were added
+                const hasWorkflowCards = Array.from(mutation.addedNodes).some(node => 
+                    node.nodeType === 1 && (node.classList?.contains('workflow-card') || node.querySelector?.('.workflow-card'))
+                );
+                
+                if (hasWorkflowCards) {
+                    setTimeout(() => addTouchEventHandling(), 100); // Small delay to ensure DOM is ready
+                }
+            }
+        });
+    });
+    
+    // Observe changes to workflow containers
+    const workflowContainer = document.querySelector('.workflows-grid, .main-content');
+    if (workflowContainer) {
+        observer.observe(workflowContainer, { childList: true, subtree: true });
+    }
+});

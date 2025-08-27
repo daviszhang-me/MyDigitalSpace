@@ -2024,41 +2024,361 @@
             .sidebar {
                 width: 100%;
                 height: auto;
+                padding: 15px;
             }
 
             .nav-toggle {
                 display: block;
+                background: rgba(52, 152, 219, 0.9);
+                border: none;
+                color: white;
+                padding: 12px 16px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+                margin-bottom: 15px;
+                width: 100%;
+                text-align: left;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
             }
 
+            .nav-toggle:hover {
+                background: rgba(52, 152, 219, 1);
+            }
+
+            .nav-toggle i {
+                transition: transform 0.3s ease;
+            }
+
+            .nav-toggle.active i {
+                transform: rotate(90deg);
+            }
+
+            /* Hide sidebar content by default on mobile */
+            .sidebar-content {
+                display: none;
+            }
+
+            .sidebar-content.active {
+                display: block;
+                animation: slideDown 0.3s ease;
+            }
+
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            /* Navigation improvements */
+            .nav-item {
+                padding: 12px 16px !important;
+                margin-bottom: 8px;
+                font-size: 16px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .nav-item i {
+                width: 20px;
+                text-align: center;
+            }
+
+            /* Content area */
+            .main-content {
+                padding: 15px !important;
+                overflow-y: auto;
+            }
+
+            /* Workflow cards mobile optimization */
+            .workflows-grid {
+                grid-template-columns: 1fr !important;
+                gap: 15px !important;
+                padding: 15px !important;
+            }
+
+            /* Notes grid mobile */
             .notes-grid {
                 grid-template-columns: 1fr;
-                padding: 20px;
+                padding: 15px;
+                gap: 15px;
             }
 
+            /* Personal card mobile */
             .personal-card {
                 padding: 20px;
+                margin: 15px;
             }
 
+            /* Header mobile */
             .knowledge-header {
-                padding: 20px 15px;
+                padding: 15px;
+                text-align: center;
             }
 
             .header-content {
                 gap: 15px;
+                flex-direction: column;
+                align-items: center;
             }
 
             .home-btn {
-                width: 60px;
-                height: 60px;
-                font-size: 22px;
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
             }
 
             .knowledge-header h2 {
-                font-size: 2em;
+                font-size: 1.8em;
             }
 
             .knowledge-header p {
-                font-size: 1em;
+                font-size: 0.9em;
+            }
+
+            /* Workflow controls mobile */
+            .workflow-controls {
+                flex-direction: column !important;
+                gap: 12px !important;
+                padding: 15px !important;
+            }
+
+            .workflow-search-container {
+                width: 100% !important;
+                margin: 0 !important;
+            }
+
+            #workflowSearch {
+                min-width: auto !important;
+                width: 100% !important;
+                font-size: 16px !important; /* Prevents zoom on iOS */
+            }
+
+            .workflow-filters {
+                flex-direction: column !important;
+                gap: 8px !important;
+                width: 100% !important;
+            }
+
+            .workflow-filters select {
+                font-size: 16px !important; /* Prevents zoom on iOS */
+                padding: 10px !important;
+            }
+
+            /* Workflow actions mobile */
+            .workflow-actions {
+                opacity: 1 !important; /* Always visible on mobile */
+                position: static !important;
+                margin-top: 10px !important;
+                padding-top: 10px !important;
+                border-top: 1px solid #eee !important;
+                display: flex !important;
+                justify-content: flex-end !important;
+                gap: 8px !important;
+            }
+
+            .workflow-actions button {
+                padding: 10px 12px !important;
+                font-size: 14px !important;
+                border-radius: 6px !important;
+                min-width: 44px !important; /* iOS touch target */
+                min-height: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+
+            /* Workflow card mobile optimization */
+            .workflow-card {
+                padding: 16px !important;
+                margin-bottom: 12px !important;
+                border-radius: 12px !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+                cursor: pointer !important;
+                transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+            }
+
+            .workflow-card:active {
+                transform: scale(0.98) !important;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important;
+            }
+
+            .workflow-header h4 {
+                font-size: 16px !important;
+                line-height: 1.4 !important;
+                margin-bottom: 8px !important;
+            }
+
+            .workflow-meta {
+                gap: 6px !important;
+                margin-bottom: 12px !important;
+            }
+
+            .workflow-meta span {
+                padding: 4px 8px !important;
+                font-size: 10px !important;
+                border-radius: 10px !important;
+            }
+
+            /* Modal improvements for mobile */
+            .modal {
+                padding: 10px !important;
+                align-items: flex-start !important;
+                padding-top: 20px !important;
+            }
+
+            .modal-content {
+                max-width: 100% !important;
+                width: 100% !important;
+                max-height: calc(100vh - 40px) !important;
+                margin: 0 !important;
+                border-radius: 12px !important;
+                overflow-y: auto !important;
+            }
+
+            .modal-header {
+                padding: 15px 20px !important;
+                position: sticky !important;
+                top: 0 !important;
+                background: white !important;
+                border-bottom: 1px solid #eee !important;
+                z-index: 10 !important;
+            }
+
+            .modal-header h3 {
+                font-size: 1.2em !important;
+            }
+
+            .close-modal {
+                font-size: 24px !important;
+                padding: 8px !important;
+            }
+
+            /* Form improvements */
+            .form-group {
+                margin-bottom: 20px !important;
+            }
+
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                font-size: 16px !important; /* Prevents zoom on iOS */
+                padding: 12px !important;
+                border-radius: 8px !important;
+            }
+
+            /* Button improvements */
+            .btn {
+                padding: 12px 20px !important;
+                font-size: 16px !important;
+                border-radius: 8px !important;
+                min-height: 44px !important; /* iOS touch target size */
+            }
+
+            /* Stats improvements */
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .stat-item {
+                text-align: center !important;
+                padding: 15px !important;
+            }
+
+            /* Categories mobile */
+            .categories-section {
+                padding: 15px;
+            }
+
+            /* Content Feed mobile */
+            .content-feed {
+                padding: 15px !important;
+            }
+
+            .content-item {
+                margin-bottom: 15px !important;
+                padding: 15px !important;
+            }
+
+            /* Toast notifications mobile */
+            .toast {
+                left: 10px !important;
+                right: 10px !important;
+                max-width: none !important;
+                border-radius: 8px !important;
+            }
+
+            /* Touch-friendly improvements */
+            .nav-item, .category-item {
+                min-height: 44px !important;
+                display: flex !important;
+                align-items: center !important;
+                padding: 12px 16px !important;
+                margin-bottom: 4px !important;
+                border-radius: 8px !important;
+                transition: background-color 0.2s ease !important;
+            }
+
+            .nav-item:active, .category-item:active {
+                background-color: rgba(52, 152, 219, 0.1) !important;
+            }
+
+            /* Scrollbar improvements for mobile */
+            ::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            ::-webkit-scrollbar-track {
+                background: rgba(0,0,0,0.1);
+                border-radius: 3px;
+            }
+
+            ::-webkit-scrollbar-thumb {
+                background: rgba(0,0,0,0.3);
+                border-radius: 3px;
+            }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(0,0,0,0.5);
+            }
+
+            /* Add fade effect for mobile navigation */
+            .sidebar-content {
+                transition: opacity 0.3s ease, max-height 0.3s ease;
+                max-height: 0;
+                overflow: hidden;
+            }
+
+            .sidebar-content.active {
+                max-height: 2000px; /* Large enough to show all content */
+                opacity: 1;
+            }
+        }
+
+        /* Add medium screen optimizations */
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .workflows-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 20px !important;
+            }
+
+            .notes-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+
+            .modal-content {
+                max-width: 90% !important;
+                margin: 20px auto !important;
             }
         }
 
@@ -2397,34 +2717,36 @@
 <body>
     <div class="app-container">
         <aside class="sidebar">
-            <div class="logo">
-                <h1><i class="fas fa-user-circle"></i> Davis Zhang</h1>
-                <p>AI-Powered Engineer</p>
-            </div>
-
-            <!-- Authentication Section -->
-            <div class="auth-section">
-                <!-- Admin Access Section -->
-                <div class="auth-login" id="authLogin">
-                    <div class="auth-title">Admin Access</div>
-                    <button class="login-btn" id="adminLoginBtn" onclick="showQuickLogin()">
-                        <i class="fas fa-sign-in-alt"></i> Login
-                    </button>
-                    <div class="auth-note" id="authNote">Login to manage notes & categories</div>
-                </div>
-                
-                <!-- Home Button -->
-                <div class="nav-home-section">
-                    <button class="nav-home-btn" onclick="goToHomepage()" title="Go to Homepage">
-                        <i class="fas fa-home"></i>
-                        <span>Home</span>
-                    </button>
-                </div>
-            </div>
-
-            <button class="nav-toggle" onclick="toggleNavSection()" id="navToggle">
-                <i class="fas fa-brain"></i> Knowledge Hub
+            <button class="nav-toggle" onclick="toggleMobileNav()" id="navToggle">
+                <span><i class="fas fa-brain"></i> Knowledge Hub</span>
+                <i class="fas fa-chevron-right"></i>
             </button>
+
+            <div class="sidebar-content" id="sidebarContent">
+                <div class="logo">
+                    <h1><i class="fas fa-user-circle"></i> Davis Zhang</h1>
+                    <p>AI-Powered Engineer</p>
+                </div>
+
+                <!-- Authentication Section -->
+                <div class="auth-section">
+                    <!-- Admin Access Section -->
+                    <div class="auth-login" id="authLogin">
+                        <div class="auth-title">Admin Access</div>
+                        <button class="login-btn" id="adminLoginBtn" onclick="showQuickLogin()">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </button>
+                        <div class="auth-note" id="authNote">Login to manage notes & categories</div>
+                    </div>
+                    
+                    <!-- Home Button -->
+                    <div class="nav-home-section">
+                        <button class="nav-home-btn" onclick="goToHomepage()" title="Go to Homepage">
+                            <i class="fas fa-home"></i>
+                            <span>Home</span>
+                        </button>
+                    </div>
+                </div>
 
             <!-- Personal Info Section -->
             <div class="nav-section" id="personalSection">
@@ -2484,6 +2806,7 @@
                         <i class="fas fa-rss"></i> RSS Feeds
                     </button>
                 </div>
+            </div>
             </div>
         </aside>
 

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { pool } = require('../config/database');
+const { query } = require('../config/database-sqlite');
 
 // JWT Authentication middleware
 const authenticateToken = async (req, res, next) => {
@@ -18,8 +18,8 @@ const authenticateToken = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Check if user still exists and is active
-        const userQuery = 'SELECT id, email, name, is_active FROM users WHERE id = $1 AND is_active = true';
-        const userResult = await pool.query(userQuery, [decoded.userId]);
+        const userQuery = 'SELECT id, email, name, is_active FROM users WHERE id = ? AND is_active = 1';
+        const userResult = await query(userQuery, [decoded.userId]);
         
         if (userResult.rows.length === 0) {
             return res.status(401).json({ 
@@ -63,8 +63,8 @@ const optionalAuth = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userQuery = 'SELECT id, email, name FROM users WHERE id = $1 AND is_active = true';
-        const userResult = await pool.query(userQuery, [decoded.userId]);
+        const userQuery = 'SELECT id, email, name FROM users WHERE id = ? AND is_active = 1';
+        const userResult = await query(userQuery, [decoded.userId]);
         
         req.user = userResult.rows.length > 0 ? {
             id: decoded.userId,

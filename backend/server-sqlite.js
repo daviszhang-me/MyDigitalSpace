@@ -736,11 +736,12 @@ app.put('/api/workflows/:id', authenticateToken, async (req, res) => {
         
         // Get updated workflow
         const updated = await query('SELECT * FROM workflows WHERE id = ?', [workflowId]);
+        const workflow = updated.rows ? updated.rows[0] : updated[0];
         
         res.json({
             success: true,
             message: 'Workflow updated successfully',
-            data: { workflow: updated[0] }
+            data: { workflow: workflow }
         });
         
     } catch (error) {

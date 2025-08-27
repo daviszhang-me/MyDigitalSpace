@@ -10,28 +10,28 @@ router.get('/', authenticateToken, validateWorkflowsQuery, async (req, res) => {
     const userId = req.user.id;
 
     try {
-        let query = 'SELECT * FROM workflows WHERE user_id = $1';
+        let queryStr = 'SELECT * FROM workflows WHERE user_id = $1';
         let params = [userId];
         let paramCount = 1;
 
         // Add status filter
         if (status) {
             paramCount++;
-            query += ` AND status = $${paramCount}`;
+            queryStr += ` AND status = $${paramCount}`;
             params.push(status);
         }
 
         // Add priority filter
         if (priority) {
             paramCount++;
-            query += ` AND priority = $${paramCount}`;
+            queryStr += ` AND priority = $${paramCount}`;
             params.push(priority);
         }
 
         // Add category filter
         if (category) {
             paramCount++;
-            query += ` AND category = $${paramCount}`;
+            queryStr += ` AND category = $${paramCount}`;
             params.push(category);
         }
 
@@ -40,7 +40,7 @@ router.get('/', authenticateToken, validateWorkflowsQuery, async (req, res) => {
             const tagArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
             if (tagArray.length > 0) {
                 paramCount++;
-                query += ` AND tags && $${paramCount}`;
+                queryStr += ` AND tags && $${paramCount}`;
                 params.push(tagArray);
             }
         }
@@ -48,23 +48,23 @@ router.get('/', authenticateToken, validateWorkflowsQuery, async (req, res) => {
         // Add search filter
         if (search) {
             paramCount++;
-            query += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
+            queryStr += ` AND (title ILIKE $${paramCount} OR description ILIKE $${paramCount})`;
             params.push(`%${search}%`);
         }
 
         // Add sorting
-        query += ` ORDER BY ${sort} ${order.toUpperCase()}`;
+        queryStr += ` ORDER BY ${sort} ${order.toUpperCase()}`;
 
         // Add pagination
         paramCount++;
-        query += ` LIMIT $${paramCount}`;
+        queryStr += ` LIMIT $${paramCount}`;
         params.push(limit);
 
         paramCount++;
-        query += ` OFFSET $${paramCount}`;
+        queryStr += ` OFFSET $${paramCount}`;
         params.push(offset);
 
-        const result = await pool.query(query, params);
+        const result = await query(queryStr, params);
 
         // Get total count for pagination
         let countQuery = 'SELECT COUNT(*) FROM workflows WHERE user_id = $1';
@@ -83,7 +83,7 @@ router.get('/', authenticateToken, validateWorkflowsQuery, async (req, res) => {
             countParams.push(category);
         }
 
-        const countResult = await pool.query(countQuery, countParams);
+        const countResult = await query(countQuery, countParams);
 
         res.json({
             success: true,
@@ -110,7 +110,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     try {
         // Get workflow
-        const workflowResult = await pool.query(
+        const workflowResult = await query(
             'SELECT * FROM workflows WHERE id = $1 AND user_id = $2',
             [workflowId, userId]
         );
@@ -123,13 +123,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
         }
 
         // Get workflow steps
-        const stepsResult = await pool.query(
+        const stepsResult = await query(
             'SELECT * FROM workflow_steps WHERE workflow_id = $1 ORDER BY step_order ASC',
             [workflowId]
         );
 
         // Get attachments
-        const attachmentsResult = await pool.query(
+        const attachmentsResult = await query(
             'SELECT * FROM workflow_attachments WHERE workflow_id = $1',
             [workflowId]
         );
@@ -158,10 +158,10 @@ router.post('/', authenticateToken, validateWorkflow, async (req, res) => {
 
     try {
         // Start transaction
-        await pool.query('BEGIN');
+        await query('BEGIN');
 
         // Create workflow
-        const workflowResult = await pool.query(
+        const workflowResult = await query(
             `INSERT INTO workflows (user_id, title, description, category, priority, tags, due_date, status)
              VALUES ($1, $2, $3, $4, $5, $6, $7, 'active')
              RETURNING *`,
@@ -174,7 +174,7 @@ router.post('/', authenticateToken, validateWorkflow, async (req, res) => {
         if (steps && Array.isArray(steps) && steps.length > 0) {
             for (let i = 0; i < steps.length; i++) {
                 const step = steps[i];
-                await pool.query(
+                await query(
                     `INSERT INTO workflow_steps (workflow_id, title, description, step_order, due_date, assignee)
                      VALUES ($1, $2, $3, $4, $5, $6)`,
                     [workflow.id, step.title, step.description || null, i, step.due_date || null, step.assignee || null]
@@ -182,15 +182,15 @@ router.post('/', authenticateToken, validateWorkflow, async (req, res) => {
             }
         }
 
-        await pool.query('COMMIT');
+        await query('COMMIT');
 
         // Fetch complete workflow with steps
-        const completeWorkflowResult = await pool.query(
+        const completeWorkflowResult = await query(
             'SELECT * FROM workflows WHERE id = $1',
             [workflow.id]
         );
 
-        const stepsResult = await pool.query(
+        const stepsResult = await query(
             'SELECT * FROM workflow_steps WHERE workflow_id = $1 ORDER BY step_order ASC',
             [workflow.id]
         );
@@ -203,7 +203,7 @@ router.post('/', authenticateToken, validateWorkflow, async (req, res) => {
             data: { workflow: completeWorkflow }
         });
     } catch (error) {
-        await pool.query('ROLLBACK');
+        await query('ROLLBACK');
         console.error('Error creating workflow:', error);
         res.status(500).json({
             success: false,
@@ -220,7 +220,7 @@ router.put('/:id', authenticateToken, validateWorkflowUpdate, async (req, res) =
 
     try {
         // Check if workflow exists and belongs to user
-        const existingResult = await pool.query(
+        const existingResult = await query(
             'SELECT * FROM workflows WHERE id = $1 AND user_id = $2',
             [workflowId, userId]
         );
@@ -234,7 +234,7 @@ router.put('/:id', authenticateToken, validateWorkflowUpdate, async (req, res) =
 
         // Update workflow
         const completedAt = status === 'completed' ? new Date() : null;
-        const result = await pool.query(
+        const result = await query(
             `UPDATE workflows 
              SET title = $3, description = $4, category = $5, priority = $6, 
                  tags = $7, due_date = $8, status = $9, completed_at = $10,
@@ -263,7 +263,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const result = await pool.query(
+        const result = await query(
             'DELETE FROM workflows WHERE id = $1 AND user_id = $2 RETURNING id',
             [workflowId, userId]
         );
@@ -298,7 +298,7 @@ router.post('/:id/steps', authenticateToken, validateWorkflowStep, async (req, r
 
     try {
         // Verify workflow ownership
-        const workflowResult = await pool.query(
+        const workflowResult = await query(
             'SELECT id FROM workflows WHERE id = $1 AND user_id = $2',
             [workflowId, userId]
         );
@@ -311,7 +311,7 @@ router.post('/:id/steps', authenticateToken, validateWorkflowStep, async (req, r
         }
 
         // Create step
-        const result = await pool.query(
+        const result = await query(
             `INSERT INTO workflow_steps (workflow_id, title, description, step_order, due_date, assignee)
              VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING *`,
@@ -340,7 +340,7 @@ router.put('/:id/steps/:stepId', authenticateToken, async (req, res) => {
 
     try {
         // Verify workflow ownership
-        const workflowResult = await pool.query(
+        const workflowResult = await query(
             'SELECT id FROM workflows WHERE id = $1 AND user_id = $2',
             [workflowId, userId]
         );
@@ -354,7 +354,7 @@ router.put('/:id/steps/:stepId', authenticateToken, async (req, res) => {
 
         // Update step
         const completedAt = status === 'completed' ? new Date() : null;
-        const result = await pool.query(
+        const result = await query(
             `UPDATE workflow_steps 
              SET title = $3, description = $4, status = $5, due_date = $6, 
                  assignee = $7, notes = $8, completed_at = $9,
@@ -392,7 +392,7 @@ router.delete('/:id/steps/:stepId', authenticateToken, async (req, res) => {
 
     try {
         // Verify workflow ownership
-        const workflowResult = await pool.query(
+        const workflowResult = await query(
             'SELECT id FROM workflows WHERE id = $1 AND user_id = $2',
             [workflowId, userId]
         );
@@ -405,7 +405,7 @@ router.delete('/:id/steps/:stepId', authenticateToken, async (req, res) => {
         }
 
         // Delete step
-        const result = await pool.query(
+        const result = await query(
             'DELETE FROM workflow_steps WHERE id = $1 AND workflow_id = $2 RETURNING id',
             [stepId, workflowId]
         );
@@ -435,7 +435,7 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const result = await pool.query(`
+        const result = await query(`
             SELECT 
                 COUNT(*) as total_workflows,
                 COUNT(CASE WHEN status = 'draft' THEN 1 END) as draft_workflows,
@@ -469,7 +469,7 @@ router.post('/:id/attachments', authenticateToken, async (req, res) => {
 
     try {
         // Verify workflow ownership
-        const workflowResult = await pool.query(
+        const workflowResult = await query(
             'SELECT id FROM workflows WHERE id = $1 AND user_id = $2',
             [workflowId, userId]
         );
@@ -482,7 +482,7 @@ router.post('/:id/attachments', authenticateToken, async (req, res) => {
         }
 
         // Create attachment
-        const result = await pool.query(
+        const result = await query(
             `INSERT INTO workflow_attachments (workflow_id, attachment_type, attachment_id, url, title, description)
              VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING *`,
