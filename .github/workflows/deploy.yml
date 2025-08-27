@@ -81,6 +81,28 @@ jobs:
         echo "🚀 Starting deployment to EC2 instance: i-0f4af27f7d4b2ee8d"
         echo "📍 Instance IP: $SERVER_IP"
         
+        # Generate version info
+        echo "📝 Generating version information..."
+        COMMIT_HASH="${{ github.sha }}"
+        BRANCH_NAME="${{ github.ref_name }}"
+        BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        BUILD_NUMBER="${{ github.run_number }}"
+        VERSION="v1.${BUILD_NUMBER}"
+        
+        # Create version.json file
+        cat > version.json << EOF
+        {
+          "version": "$VERSION",
+          "commit": "$COMMIT_HASH",
+          "branch": "$BRANCH_NAME",
+          "buildNumber": $BUILD_NUMBER,
+          "timestamp": "$BUILD_TIME",
+          "environment": "production"
+        }
+        EOF
+        
+        echo "✅ Version info generated: $VERSION (build $BUILD_NUMBER)"
+        
         # Create deployment package
         echo "📦 Creating deployment package..."
         TEMP_DIR="/tmp/mydigitalspace-deploy"

@@ -2712,6 +2712,97 @@
             width: 80px;
             margin-right: 10px;
         }
+
+        /* Version Info Styles */
+        .version-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .version-title {
+            color: #bbb;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .version-title i {
+            margin-right: 5px;
+            opacity: 0.7;
+        }
+
+        .version-details {
+            font-size: 11px;
+        }
+
+        .version-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding: 2px 0;
+        }
+
+        .version-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .version-label {
+            color: #aaa;
+            font-weight: 500;
+        }
+
+        .version-value {
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .version-value#appVersion {
+            background: rgba(52, 152, 219, 0.3);
+            color: #5dade2;
+            font-weight: 600;
+        }
+
+        .version-value#buildHash {
+            background: rgba(46, 204, 113, 0.3);
+            color: #7dcea0;
+        }
+
+        .version-value#deployTime {
+            background: rgba(155, 89, 182, 0.3);
+            color: #bb8fce;
+        }
+
+        /* Mobile version info adjustments */
+        @media (max-width: 768px) {
+            .version-info {
+                margin-top: 15px;
+                padding: 12px;
+            }
+
+            .version-details {
+                font-size: 10px;
+            }
+
+            .version-value {
+                font-size: 9px;
+                max-width: 80px;
+                padding: 1px 4px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2805,6 +2896,27 @@
                     <button class="add-note-btn" onclick="showRSSManagement()" style="background: #f39c12; margin-top: 10px;">
                         <i class="fas fa-rss"></i> RSS Feeds
                     </button>
+                </div>
+            </div>
+
+            <!-- Version Information -->
+            <div class="version-info" id="versionInfo">
+                <div class="version-title">
+                    <i class="fas fa-code-branch"></i> Version Info
+                </div>
+                <div class="version-details">
+                    <div class="version-item">
+                        <span class="version-label">Version:</span>
+                        <span class="version-value" id="appVersion">v0.0.0</span>
+                    </div>
+                    <div class="version-item">
+                        <span class="version-label">Build:</span>
+                        <span class="version-value" id="buildHash">loading...</span>
+                    </div>
+                    <div class="version-item">
+                        <span class="version-label">Deployed:</span>
+                        <span class="version-value" id="deployTime">loading...</span>
+                    </div>
                 </div>
             </div>
             </div>

@@ -3624,6 +3624,52 @@ function addTouchEventHandling() {
     });
 }
 
+// Version loading functionality
+async function loadVersionInfo() {
+    try {
+        const response = await fetch('/version.json');
+        if (response.ok) {
+            const versionData = await response.json();
+            updateVersionDisplay(versionData);
+        } else {
+            // Fallback to basic version info
+            updateVersionDisplay({
+                version: 'v1.0.0',
+                commit: 'unknown',
+                timestamp: new Date().toISOString()
+            });
+        }
+    } catch (error) {
+        console.warn('Could not load version info:', error);
+        // Fallback version display
+        updateVersionDisplay({
+            version: 'v1.0.0',
+            commit: 'local',
+            timestamp: new Date().toISOString()
+        });
+    }
+}
+
+function updateVersionDisplay(versionData) {
+    const appVersionEl = document.getElementById('appVersion');
+    const buildHashEl = document.getElementById('buildHash');
+    const deployTimeEl = document.getElementById('deployTime');
+    
+    if (appVersionEl) {
+        appVersionEl.textContent = versionData.version || 'v1.0.0';
+    }
+    
+    if (buildHashEl) {
+        const shortHash = versionData.commit ? versionData.commit.substring(0, 7) : 'unknown';
+        buildHashEl.textContent = shortHash;
+    }
+    
+    if (deployTimeEl) {
+        const deployTime = versionData.timestamp ? new Date(versionData.timestamp) : new Date();
+        deployTimeEl.textContent = deployTime.toLocaleDateString() + ' ' + deployTime.toLocaleTimeString();
+    }
+}
+
 // Initialize mobile navigation when page loads
 document.addEventListener('DOMContentLoaded', function() {
     initializeMobileNav();
@@ -3631,6 +3677,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add touch event handling
     addTouchEventHandling();
+    
+    // Load version information
+    loadVersionInfo();
     
     // Re-add touch events when workflows are re-rendered
     const observer = new MutationObserver(function(mutations) {
