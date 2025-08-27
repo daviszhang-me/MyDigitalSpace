@@ -118,39 +118,94 @@ jobs:
         #!/bin/bash
         set -e
         
+        # Enhanced error handling and logging
+        DEPLOYMENT_START_TIME=$(date)
+        BACKUP_DIR="/tmp/mydigitalspace-backup-$(date +%Y%m%d-%H%M%S)"
+        DEPLOYMENT_LOG="/var/log/mydigitalspace/deployment.log"
+        
+        echo "🚀 Starting deployment at $DEPLOYMENT_START_TIME" | tee -a $DEPLOYMENT_LOG
+        
         cd /var/www/MyDigitalSpace
+        
+        # Create backup before deployment
+        echo "💾 Creating backup..." | tee -a $DEPLOYMENT_LOG
+        sudo mkdir -p $BACKUP_DIR
+        sudo cp -r /var/www/MyDigitalSpace $BACKUP_DIR/ 2>/dev/null || echo "⚠️ Backup creation failed, continuing..."
         
         # Set proper permissions
         sudo chown -R ubuntu:ubuntu /var/www/MyDigitalSpace
         
+        # Verify required files exist before proceeding
+        echo "🔍 Verifying deployment files..." | tee -a $DEPLOYMENT_LOG
+        REQUIRED_FILES=(
+            "backend/server-sqlite.js"
+            "backend/scripts/setup-database-sqlite.js"
+            "database/schema-sqlite.sql"
+            "script.js"
+            "index.html"
+        )
+        
+        for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+                echo "❌ Critical file missing: $file" | tee -a $DEPLOYMENT_LOG
+                echo "📋 Available files in directory:" | tee -a $DEPLOYMENT_LOG
+                ls -la "$(dirname "$file")" 2>&1 | tee -a $DEPLOYMENT_LOG
+                exit 1
+            else
+                echo "✅ Found: $file" | tee -a $DEPLOYMENT_LOG
+            fi
+        done
+        
         # Install/update backend dependencies
-        echo "📦 Installing backend dependencies..."
+        echo "📦 Installing backend dependencies..." | tee -a $DEPLOYMENT_LOG
         cd backend
-        npm install --production
+        if ! npm install --production 2>&1 | tee -a $DEPLOYMENT_LOG; then
+            echo "❌ NPM install failed!" | tee -a $DEPLOYMENT_LOG
+            exit 1
+        fi
         
         # Create database directories
         mkdir -p data database
         
-        # Run database setup with detailed logging
-        echo "🗄️ Setting up database..."
-        if ! node scripts/setup-database-sqlite.js; then
-            echo "❌ Database setup failed!"
-            echo "📋 Attempting to check existing database..."
-            ls -la data/ 2>/dev/null || echo "No data directory found"
-            sqlite3 data/knowledgehub.db ".tables" 2>/dev/null || echo "Cannot access database"
+        # Run database setup with enhanced verification
+        echo "🗄️ Setting up database..." | tee -a $DEPLOYMENT_LOG
+        if ! node scripts/setup-database-sqlite.js 2>&1 | tee -a $DEPLOYMENT_LOG; then
+            echo "❌ Database setup failed!" | tee -a $DEPLOYMENT_LOG
+            echo "📋 Checking setup script and database..." | tee -a $DEPLOYMENT_LOG
+            ls -la scripts/setup-database-sqlite.js 2>&1 | tee -a $DEPLOYMENT_LOG
+            ls -la database/schema-sqlite.sql 2>&1 | tee -a $DEPLOYMENT_LOG
+            ls -la data/ 2>&1 | tee -a $DEPLOYMENT_LOG
             exit 1
         fi
         
-        echo "👥 Setting up users..."
-        node scripts/add-users.js 2>&1 || echo "⚠️ User setup completed with warnings (this is normal on first run)"
+        # Verify database tables were created
+        echo "🔍 Verifying database tables..." | tee -a $DEPLOYMENT_LOG
+        EXPECTED_TABLES=("users" "notes" "workflows" "workflow_steps" "workflow_attachments")
+        for table in "${EXPECTED_TABLES[@]}"; do
+            if sqlite3 data/knowledgehub.db "SELECT name FROM sqlite_master WHERE type='table' AND name='$table';" | grep -q "$table"; then
+                echo "✅ Table verified: $table" | tee -a $DEPLOYMENT_LOG
+            else
+                echo "❌ Missing table: $table" | tee -a $DEPLOYMENT_LOG
+                echo "📋 Available tables:" | tee -a $DEPLOYMENT_LOG
+                sqlite3 data/knowledgehub.db ".tables" 2>&1 | tee -a $DEPLOYMENT_LOG
+                exit 1
+            fi
+        done
+        
+        echo "👥 Setting up users..." | tee -a $DEPLOYMENT_LOG
+        node scripts/add-users.js 2>&1 | tee -a $DEPLOYMENT_LOG || echo "⚠️ User setup completed with warnings (this is normal on first run)" | tee -a $DEPLOYMENT_LOG
         
         # Install PM2 if not already installed
         if ! command -v pm2 &> /dev/null; then
-            echo "📋 Installing PM2..."
-            sudo npm install -g pm2
+            echo "📋 Installing PM2..." | tee -a $DEPLOYMENT_LOG
+            if ! sudo npm install -g pm2 2>&1 | tee -a $DEPLOYMENT_LOG; then
+                echo "❌ PM2 installation failed!" | tee -a $DEPLOYMENT_LOG
+                exit 1
+            fi
         fi
         
         # Create/update PM2 ecosystem file
+        echo "⚙️ Creating PM2 configuration..." | tee -a $DEPLOYMENT_LOG
         cat > ecosystem.config.js << 'PM2_CONFIG'
         module.exports = {
           apps: [{
@@ -170,7 +225,9 @@ jobs:
             error_file: '/var/log/mydigitalspace/error.log',
             out_file: '/var/log/mydigitalspace/access.log',
             log_file: '/var/log/mydigitalspace/combined.log',
-            time: true
+            time: true,
+            max_restarts: 10,
+            min_uptime: '10s'
           }]
         };
         PM2_CONFIG
@@ -179,38 +236,74 @@ jobs:
         sudo mkdir -p /var/log/mydigitalspace
         sudo chown ubuntu:ubuntu /var/log/mydigitalspace
         
-        # Restart application with detailed monitoring
-        echo "🔄 Restarting application..."
-        pm2 stop mydigitalspace-backend 2>/dev/null || true
-        pm2 delete mydigitalspace-backend 2>/dev/null || true
+        # Stop existing application gracefully
+        echo "🛑 Stopping existing application..." | tee -a $DEPLOYMENT_LOG
+        pm2 stop mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        pm2 delete mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
         
-        echo "🚀 Starting application..."
-        if ! pm2 start ecosystem.config.js; then
-            echo "❌ PM2 start failed!"
-            echo "📋 Checking PM2 status..."
-            pm2 status
-            echo "📋 Checking recent logs..."
-            pm2 logs mydigitalspace-backend --lines 20 2>/dev/null || echo "No logs available"
+        # Start application with enhanced monitoring
+        echo "🚀 Starting application..." | tee -a $DEPLOYMENT_LOG
+        if ! pm2 start ecosystem.config.js 2>&1 | tee -a $DEPLOYMENT_LOG; then
+            echo "❌ PM2 start failed!" | tee -a $DEPLOYMENT_LOG
+            echo "📋 Checking PM2 status..." | tee -a $DEPLOYMENT_LOG
+            pm2 status 2>&1 | tee -a $DEPLOYMENT_LOG
+            echo "📋 Checking recent logs..." | tee -a $DEPLOYMENT_LOG
+            pm2 logs mydigitalspace-backend --lines 20 2>&1 | tee -a $DEPLOYMENT_LOG || echo "No logs available"
+            
+            # Attempt rollback
+            echo "🔄 Attempting rollback..." | tee -a $DEPLOYMENT_LOG
+            if [ -d "$BACKUP_DIR/MyDigitalSpace" ]; then
+                sudo cp -r $BACKUP_DIR/MyDigitalSpace/* /var/www/MyDigitalSpace/
+                pm2 start ecosystem.config.js 2>&1 | tee -a $DEPLOYMENT_LOG || true
+            fi
             exit 1
         fi
         
-        pm2 save
-        pm2 startup ubuntu -u ubuntu --hp /home/ubuntu 2>/dev/null || true
+        # Save PM2 configuration and set up auto-restart
+        pm2 save 2>&1 | tee -a $DEPLOYMENT_LOG
+        pm2 startup ubuntu -u ubuntu --hp /home/ubuntu 2>&1 | tee -a $DEPLOYMENT_LOG || true
         
-        # Wait for application to start and verify
-        echo "⏳ Waiting for application to start..."
-        sleep 10
+        # Enhanced application startup verification
+        echo "⏳ Waiting for application to start..." | tee -a $DEPLOYMENT_LOG
+        sleep 15
         
+        # Check PM2 process status
         if ! pm2 show mydigitalspace-backend | grep "online"; then
-            echo "❌ Application not running properly!"
-            echo "📋 PM2 status:"
-            pm2 status
-            echo "📋 Application logs:"
-            pm2 logs mydigitalspace-backend --lines 50
+            echo "❌ Application not running properly!" | tee -a $DEPLOYMENT_LOG
+            echo "📋 PM2 status:" | tee -a $DEPLOYMENT_LOG
+            pm2 status 2>&1 | tee -a $DEPLOYMENT_LOG
+            echo "📋 Application logs:" | tee -a $DEPLOYMENT_LOG
+            pm2 logs mydigitalspace-backend --lines 50 2>&1 | tee -a $DEPLOYMENT_LOG
             exit 1
         fi
         
-        echo "✅ Application started successfully!"
+        # Test backend directly before nginx setup
+        echo "🔍 Testing backend connection..." | tee -a $DEPLOYMENT_LOG
+        for i in {1..5}; do
+            if curl -f -m 5 http://localhost:3001/api 2>&1 | tee -a $DEPLOYMENT_LOG; then
+                echo "✅ Backend responding on attempt $i" | tee -a $DEPLOYMENT_LOG
+                break
+            else
+                echo "⚠️ Backend test attempt $i failed, retrying..." | tee -a $DEPLOYMENT_LOG
+                sleep 3
+                if [ $i -eq 5 ]; then
+                    echo "❌ Backend failed to respond after 5 attempts!" | tee -a $DEPLOYMENT_LOG
+                    pm2 logs mydigitalspace-backend --lines 30 2>&1 | tee -a $DEPLOYMENT_LOG
+                    exit 1
+                fi
+            fi
+        done
+        
+        # Test workflow endpoint specifically
+        echo "🔍 Testing workflow endpoint..." | tee -a $DEPLOYMENT_LOG
+        if curl -f -m 10 http://localhost:3001/api/workflows 2>&1 | tee -a $DEPLOYMENT_LOG; then
+            echo "✅ Workflow endpoint responding" | tee -a $DEPLOYMENT_LOG
+        else
+            echo "❌ Workflow endpoint failed!" | tee -a $DEPLOYMENT_LOG
+            exit 1
+        fi
+        
+        echo "✅ Application started successfully!" | tee -a $DEPLOYMENT_LOG
         
         # Setup/update Nginx configuration
         echo "🌐 Configuring Nginx..."
@@ -321,7 +414,23 @@ jobs:
             echo "⚠️ API endpoint check failed (non-critical)"
         fi
         
-        echo "🎉 Deployment completed successfully with full verification!"
+        # Final deployment success report
+        DEPLOYMENT_END_TIME=$(date)
+        echo "🎉 Deployment completed successfully with full verification!" | tee -a $DEPLOYMENT_LOG
+        echo "⏰ Deployment duration: $DEPLOYMENT_START_TIME to $DEPLOYMENT_END_TIME" | tee -a $DEPLOYMENT_LOG
+        
+        echo "📊 Final Status Summary:" | tee -a $DEPLOYMENT_LOG
+        echo "✅ Database tables: workflows, workflow_steps, workflow_attachments created" | tee -a $DEPLOYMENT_LOG
+        echo "✅ Backend application: mydigitalspace-backend running" | tee -a $DEPLOYMENT_LOG
+        echo "✅ API endpoints: /api, /api/workflows accessible" | tee -a $DEPLOYMENT_LOG
+        echo "✅ Nginx proxy: configured and running" | tee -a $DEPLOYMENT_LOG
+        echo "✅ PM2 process: auto-restart enabled" | tee -a $DEPLOYMENT_LOG
+        
+        # Cleanup backup on successful deployment
+        echo "🧹 Cleaning up backup..." | tee -a $DEPLOYMENT_LOG
+        sudo rm -rf $BACKUP_DIR 2>/dev/null || true
+        
+        echo "🌟 Deployment completed successfully! Application ready for use." | tee -a $DEPLOYMENT_LOG
         EOF
         
         chmod +x $TEMP_DIR/deploy-server.sh
@@ -437,10 +546,43 @@ jobs:
     - name: Deployment notification
       if: always()
       run: |
+        echo "📋 GitHub Actions Deployment Report"
+        echo "====================================="
         if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Deployment successful!"
+          echo "🎉 DEPLOYMENT SUCCESSFUL!"
+          echo ""
+          echo "📊 Deployment Details:"
           echo "🌐 Application URL: http://${{ steps.get-ip.outputs.instance-ip }}"
+          echo "🔗 WorkflowHub: http://${{ steps.get-ip.outputs.instance-ip }}/#workflow"
+          echo "🔗 KnowledgeHub: http://${{ steps.get-ip.outputs.instance-ip }}/#knowledge"  
+          echo "🔗 API Root: http://${{ steps.get-ip.outputs.instance-ip }}/api/"
           echo "📱 Instance ID: i-0f4af27f7d4b2ee8d"
+          echo "🏷️ Git Commit: ${{ github.sha }}"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo ""
+          echo "✅ Enhanced Features Deployed:"
+          echo "  - Role-based workflow permissions (admin-only editing)"
+          echo "  - Public workflow viewing for all users"
+          echo "  - Improved database schema with workflow tables"
+          echo "  - Enhanced deployment monitoring and rollback"
+          echo "  - Comprehensive error handling and logging"
+          echo ""
+          echo "📋 Next Steps:"
+          echo "  - Test workflow creation as admin user"
+          echo "  - Verify public users can view but not edit workflows"
+          echo "  - Check deployment logs at: /var/log/mydigitalspace/deployment.log"
+          
         else
-          echo "❌ Deployment failed!"
+          echo "❌ DEPLOYMENT FAILED!"
+          echo ""
+          echo "🔍 Troubleshooting Steps:"
+          echo "1. Check GitHub Actions logs for specific error details"
+          echo "2. SSH to server: ssh -i ~/.ssh/id_rsa ubuntu@${{ steps.get-ip.outputs.instance-ip }}"
+          echo "3. Check deployment logs: tail -f /var/log/mydigitalspace/deployment.log"
+          echo "4. Check PM2 status: pm2 status"
+          echo "5. Check application logs: pm2 logs mydigitalspace-backend"
+          echo ""
+          echo "📞 Rollback available at backup directory on server"
+          echo "🔧 Manual fixes may be required - check server status"
         fi
+        echo "====================================="
