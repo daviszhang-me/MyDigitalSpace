@@ -1,5 +1,5 @@
 const express = require('express');
-const { pool } = require('../config/database');
+const { query } = require('../config/database-sqlite');
 const { authenticateToken } = require('../middleware/auth');
 const { validateWorkflow, validateWorkflowUpdate, validateWorkflowStep, validateWorkflowsQuery } = require('../middleware/validation');
 const router = express.Router();

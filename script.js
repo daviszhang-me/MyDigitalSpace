@@ -36,13 +36,16 @@ class PersonalWebsite {
         this.updateTagFilters();
         this.updateKnowledgeStats();
         
-        // Load workflows if authenticated
-        if (this.isAuthenticated) {
-            await this.loadWorkflows();
-            this.updateAllWorkflowTags();
-            this.renderWorkflows();
-            this.updateWorkflowStats();
-        }
+        // Load workflows (public access)
+        console.log('🚀 Starting workflow loading...');
+        await this.loadWorkflows();
+        console.log('🏷️ Updating workflow tags...');
+        this.updateAllWorkflowTags();
+        console.log('🎯 About to render workflows after loading...');
+        this.renderWorkflows();
+        console.log('📊 Updating workflow stats...');
+        this.updateWorkflowStats();
+        console.log('✅ Workflow initialization complete');
         
         // Update authentication UI
         this.updateAuthUI();
@@ -112,21 +115,24 @@ class PersonalWebsite {
 
         // Login form submission
         const loginForm = document.getElementById('loginForm');
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-            
-            const result = await this.login(email, password);
-            if (!result.success) {
-                alert(result.message);
-            }
-        });
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                
+                const result = await this.login(email, password);
+                if (!result.success) {
+                    alert(result.message);
+                }
+            });
+        }
 
         // Register form submission
         const registerForm = document.getElementById('registerForm');
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        if (registerForm) {
+            registerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
             const name = document.getElementById('registerName').value;
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
@@ -136,15 +142,18 @@ class PersonalWebsite {
             if (!result.success) {
                 alert(result.message);
             }
-        });
+            });
+        }
 
         // Close modal when clicking outside
         const modal = document.getElementById('noteModal');
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                this.closeModal();
-            }
-        });
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.closeModal();
+                }
+            });
+        }
     }
 
     searchNotes(query) {
@@ -471,7 +480,10 @@ class PersonalWebsite {
         document.querySelectorAll('#personalSection .category-item').forEach(item => {
             item.classList.remove('active');
         });
-        document.querySelector(`[data-section="${pageId}"]`).classList.add('active');
+        const navItem = document.querySelector(`[data-section="${pageId}"]`);
+        if (navItem) {
+            navItem.classList.add('active');
+        }
 
         // Update main header
         const header = document.getElementById('mainHeader');
@@ -946,6 +958,9 @@ class PersonalWebsite {
         // Add auth token if available
         if (this.authToken) {
             options.headers['Authorization'] = `Bearer ${this.authToken}`;
+            console.log('🔑 Auth token added to request');
+        } else {
+            console.log('⚠️ No auth token available');
         }
 
         // Add request body for POST/PUT requests
@@ -1535,9 +1550,15 @@ class PersonalWebsite {
     // Workflow Management Methods
     async loadWorkflows() {
         try {
+            console.log('🔄 Loading workflows...');
             const response = await this.apiRequest('/workflows', 'GET');
+            console.log('📥 Workflows response:', response);
+            console.log('📊 Response data:', response.data);
+            console.log('🔍 Workflows array:', response.data?.workflows);
             if (response.success) {
                 this.workflows = response.data.workflows || [];
+                console.log('✅ Loaded workflows:', this.workflows?.length, 'workflows');
+                console.log('💾 this.workflows set to:', this.workflows);
             }
         } catch (error) {
             console.error('Error loading workflows:', error);
@@ -1550,7 +1571,11 @@ class PersonalWebsite {
             const url = this.editingWorkflowId ? `/workflows/${this.editingWorkflowId}` : '/workflows';
             const method = this.editingWorkflowId ? 'PUT' : 'POST';
             
+            console.log(`🌐 Making API request: ${method} ${this.apiBaseUrl}${url}`);
+            console.log('📤 Request data:', workflowData);
+            
             const response = await this.apiRequest(url, method, workflowData);
+            console.log('📥 API response:', response);
             
             if (response.success) {
                 if (this.editingWorkflowId) {
@@ -1559,6 +1584,10 @@ class PersonalWebsite {
                         this.workflows[index] = response.data.workflow;
                     }
                 } else {
+                    // Ensure workflows is an array
+                    if (!Array.isArray(this.workflows)) {
+                        this.workflows = [];
+                    }
                     this.workflows.unshift(response.data.workflow);
                 }
                 
@@ -1601,26 +1630,45 @@ class PersonalWebsite {
     renderWorkflows() {
         const workflowsGrid = document.getElementById('workflowsGrid');
         
+        console.log('🎨 Rendering workflows...', this.workflows?.length, 'workflows');
+        
         if (!workflowsGrid) {
             console.warn('Workflows grid not found');
             return;
         }
 
-        if (this.workflows.length === 0) {
+        if (!this.workflows || this.workflows.length === 0) {
+            const createButton = this.isAuthenticated 
+                ? `<button onclick="openWorkflowModal()" style="margin-top: 20px; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                       <i class="fas fa-plus"></i> Create First Workflow
+                   </button>`
+                : `<p style="margin-top: 20px; padding: 12px 24px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; color: #6c757d;">
+                       <i class="fas fa-info-circle"></i> Login to create workflows
+                   </p>`;
+            
             workflowsGrid.innerHTML = `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #666;">
                     <i class="fas fa-project-diagram" style="font-size: 64px; margin-bottom: 20px; opacity: 0.3;"></i>
                     <h3>No workflows yet</h3>
                     <p>Create your first workflow to get started with organizing your processes.</p>
-                    <button onclick="openWorkflowModal()" style="margin-top: 20px; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                        <i class="fas fa-plus"></i> Create First Workflow
-                    </button>
+                    ${createButton}
                 </div>
             `;
             return;
         }
 
         workflowsGrid.innerHTML = this.workflows.map(workflow => {
+            // Parse tags from JSON string to array
+            let tags = [];
+            if (workflow.tags) {
+                try {
+                    tags = typeof workflow.tags === 'string' ? JSON.parse(workflow.tags) : workflow.tags;
+                } catch (e) {
+                    tags = [];
+                }
+            }
+            workflow.tags = Array.isArray(tags) ? tags : [];
+            
             const priorityColors = {
                 urgent: '#e74c3c',
                 high: '#f39c12',
@@ -1643,6 +1691,7 @@ class PersonalWebsite {
                 <div class="workflow-card" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.3s; cursor: pointer; border-left: 4px solid ${priorityColors[workflow.priority]};" onclick="showWorkflowDetail(${workflow.id})">
                     <div class="workflow-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
                         <h4 style="margin: 0; color: #2c3e50; font-size: 18px; line-height: 1.3;">${workflow.title}</h4>
+                        ${this.isAuthenticated && this.currentUser?.role === 'admin' ? `
                         <div class="workflow-actions" style="opacity: 0; transition: opacity 0.3s;">
                             <button onclick="event.stopPropagation(); editWorkflow(${workflow.id})" style="background: none; border: none; color: #666; cursor: pointer; padding: 4px; margin-left: 4px;">
                                 <i class="fas fa-edit"></i>
@@ -1651,6 +1700,7 @@ class PersonalWebsite {
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
+                        ` : ''}
                     </div>
                     
                     ${workflow.description ? `<p style="color: #666; margin-bottom: 15px; font-size: 14px; line-height: 1.4;">${workflow.description}</p>` : ''}
@@ -1716,7 +1766,7 @@ class PersonalWebsite {
     }
 
     updateWorkflowStats() {
-        if (!this.isAuthenticated) return;
+        // Allow public access to workflow stats
 
         const stats = {
             total: this.workflows.length,
@@ -1759,10 +1809,14 @@ class PersonalWebsite {
 
         this.currentSection = 'workflow';
         
-        // Load workflows if authenticated
-        if (this.isAuthenticated && this.workflows.length === 0) {
+        // Load and render workflows (public access)
+        if (this.workflows.length === 0) {
             this.loadWorkflows();
         }
+        // Always render workflows when showing workflow section
+        console.log('🎨 Rendering workflows in showWorkflowSection...');
+        this.renderWorkflows();
+        this.updateWorkflowStats();
     }
 
     openWorkflowModal() {
@@ -1835,6 +1889,8 @@ class PersonalWebsite {
     }
 
     async handleWorkflowFormSubmit() {
+        console.log('🔄 Starting workflow form submission...');
+        
         const formData = {
             title: document.getElementById('workflowTitle').value.trim(),
             description: document.getElementById('workflowDescription').value.trim(),
@@ -1844,6 +1900,8 @@ class PersonalWebsite {
             tags: document.getElementById('workflowTags').value.split(',').map(tag => tag.trim()).filter(tag => tag),
             steps: []
         };
+        
+        console.log('📝 Form data:', formData);
 
         // Collect workflow steps
         const stepElements = document.querySelectorAll('.workflow-step');
@@ -1860,7 +1918,9 @@ class PersonalWebsite {
             }
         });
 
-        await this.saveWorkflow(formData);
+        console.log('💾 Calling saveWorkflow...');
+        const success = await this.saveWorkflow(formData);
+        console.log('✅ saveWorkflow result:', success);
     }
 
     applyWorkflowFilters() {
@@ -1983,6 +2043,16 @@ class PersonalWebsite {
                     ).join('');
                 } else {
                     tagsContainer.innerHTML = '<p style="color: #999; font-style: italic;">No tags</p>';
+                }
+
+                // Show/hide edit button based on user role
+                const editButton = document.getElementById('editWorkflowBtn');
+                if (editButton) {
+                    if (this.isAuthenticated && this.currentUser?.role === 'admin') {
+                        editButton.style.display = 'inline-flex';
+                    } else {
+                        editButton.style.display = 'none';
+                    }
                 }
 
                 document.getElementById('workflowDetailModal').classList.add('active');

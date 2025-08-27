@@ -610,6 +610,102 @@ app.get('/api/notes/stats/summary', async (req, res) => {
 const contentRoutes = require('./routes/content');
 app.use('/api/content', contentRoutes);
 
+// Quick workflow creation endpoint (for testing)
+app.post('/api/workflows', authenticateToken, async (req, res) => {
+    try {
+        const { title, description, category, priority, due_date, tags } = req.body;
+        const userId = req.user.id;
+        
+        console.log('Creating workflow:', { title, userId });
+        
+        const result = await query(`
+            INSERT INTO workflows (user_id, title, description, category, priority, due_date, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [userId, title, description || '', category || 'general', priority || 'medium', due_date, JSON.stringify(tags || [])]);
+        
+        const workflowId = result.lastID;
+        
+        // Get the created workflow
+        const workflow = await query('SELECT * FROM workflows WHERE id = ?', [workflowId]);
+        
+        res.json({
+            success: true,
+            message: 'Workflow created successfully',
+            data: { workflow: workflow[0] }
+        });
+        
+    } catch (error) {
+        console.error('Error creating workflow:', error);
+        res.status(500).json({ success: false, message: 'Failed to create workflow' });
+    }
+});
+
+// Get workflows endpoint (public access)
+app.get('/api/workflows', async (req, res) => {
+    try {
+        // Get all workflows (public access like notes)
+        const result = await query('SELECT * FROM workflows ORDER BY created_at DESC');
+        // Handle SQLite result format - it might be an array directly or have a rows property
+        const workflows = Array.isArray(result) ? result : (result.rows || []);
+        
+        console.log('📋 Fetching all workflows (public access)');
+        console.log('📊 Found workflows:', workflows?.length, 'workflows');
+        console.log('🔍 Workflows data:', workflows);
+        
+        res.json({
+            success: true,
+            data: { workflows }
+        });
+        
+    } catch (error) {
+        console.error('Error fetching workflows:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch workflows' });
+    }
+});
+
+// Get single workflow with details (public access)
+app.get('/api/workflows/:id', async (req, res) => {
+    try {
+        const workflowId = req.params.id;
+        
+        // Get workflow (public access - no user restriction)
+        const workflowResult = await query('SELECT * FROM workflows WHERE id = ?', [workflowId]);
+        const workflows = Array.isArray(workflowResult) ? workflowResult : (workflowResult.rows || []);
+        
+        if (workflows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Workflow not found' });
+        }
+        
+        const workflow = workflows[0];
+        
+        // Get workflow steps
+        const stepsResult = await query('SELECT * FROM workflow_steps WHERE workflow_id = ? ORDER BY step_order ASC', [workflowId]);
+        const steps = Array.isArray(stepsResult) ? stepsResult : (stepsResult.rows || []);
+        
+        // Parse tags if they exist
+        if (workflow.tags) {
+            try {
+                workflow.tags = JSON.parse(workflow.tags);
+            } catch (e) {
+                workflow.tags = [];
+            }
+        } else {
+            workflow.tags = [];
+        }
+        
+        workflow.steps = steps;
+        
+        res.json({
+            success: true,
+            data: { workflow }
+        });
+        
+    } catch (error) {
+        console.error('Error fetching workflow details:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch workflow details' });
+    }
+});
+
 // 404 handler
 app.use('*', (req, res) => {
     res.status(404).json({ success: false, message: 'Endpoint not found' });
