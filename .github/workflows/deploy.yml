@@ -541,7 +541,7 @@ jobs:
         
         # Execute deployment on remote server
         echo "🏗️ Setting up application on server..."
-        if ! ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=60 ubuntu@$SERVER_IP << 'REMOTE_COMMANDS'
+        ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=60 ubuntu@$SERVER_IP << 'REMOTE_COMMANDS'
         
         set -e  # Exit on any error
         set -x  # Print commands as they execute
@@ -585,8 +585,10 @@ jobs:
         rm -rf /tmp/mydigitalspace-deploy*
         
         echo "✅ Remote deployment completed successfully at $(date)"
+        REMOTE_COMMANDS
         
-        REMOTE_COMMANDS; then
+        # Check if deployment succeeded
+        if [ $? -eq 0 ]; then
           echo "✅ Deployment executed successfully!"
         else
           echo "❌ Remote deployment failed!"
