@@ -1,0 +1,99 @@
+name: Test Deployment Connection
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  
+jobs:
+  test-connection:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-southeast-1
+    
+    - name: Get EC2 instance IP
+      id: get-ip
+      run: |
+        echo "🔍 Getting EC2 instance IP..."
+        INSTANCE_IP=$(aws ec2 describe-instances \
+          --instance-ids i-0f4af27f7d4b2ee8d \
+          --query 'Reservations[0].Instances[0].PublicIpAddress' \
+          --output text)
+        echo "instance-ip=$INSTANCE_IP" >> $GITHUB_OUTPUT
+        echo "✅ Instance IP: $INSTANCE_IP"
+    
+    - name: Setup SSH key
+      run: |
+        echo "🔑 Setting up SSH key..."
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        touch ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+        
+        # Setup private key
+        echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /tmp/ssh_key
+        chmod 600 /tmp/ssh_key
+        
+        # Verify key format
+        echo "🔍 SSH Key info:"
+        head -1 /tmp/ssh_key
+        tail -1 /tmp/ssh_key
+        wc -l /tmp/ssh_key
+        
+        # Add server to known hosts
+        ssh-keyscan -H ${{ steps.get-ip.outputs.instance-ip }} >> ~/.ssh/known_hosts 2>/dev/null || echo "⚠️ SSH keyscan failed"
+        
+        echo "✅ SSH key setup complete"
+    
+    - name: Test SSH connection
+      run: |
+        echo "🔍 Testing SSH connection..."
+        SERVER_IP=${{ steps.get-ip.outputs.instance-ip }}
+        
+        # Test basic connectivity
+        if ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$SERVER_IP "echo 'SSH connection successful - $(date)'"; then
+          echo "✅ SSH connection successful!"
+        else
+          echo "❌ SSH connection failed!"
+          echo "🔍 Debug info:"
+          echo "Server IP: $SERVER_IP"
+          echo "SSH key permissions: $(ls -la /tmp/ssh_key)"
+          echo "Known hosts: $(wc -l ~/.ssh/known_hosts)"
+          exit 1
+        fi
+    
+    - name: Test file operations
+      run: |
+        echo "📁 Testing file operations..."
+        SERVER_IP=${{ steps.get-ip.outputs.instance-ip }}
+        
+        # Create a test file
+        echo "Test deployment at $(date)" > test-file.txt
+        
+        # Upload test file
+        if scp -i /tmp/ssh_key -o StrictHostKeyChecking=no test-file.txt ubuntu@$SERVER_IP:/tmp/; then
+          echo "✅ File upload successful!"
+        else
+          echo "❌ File upload failed!"
+          exit 1
+        fi
+        
+        # Verify file exists and run basic commands
+        ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'EOF'
+        echo "🔍 Testing remote commands:"
+        echo "Current directory: $(pwd)"
+        echo "User: $(whoami)"
+        echo "Test file exists: $(ls -la /tmp/test-file.txt)"
+        echo "Test file content: $(cat /tmp/test-file.txt)"
+        echo "Can sudo: $(sudo whoami)"
+        echo "Web directory access: $(sudo ls -la /var/www/)"
+        rm -f /tmp/test-file.txt
+        echo "✅ All remote operations successful!"
+        EOF
