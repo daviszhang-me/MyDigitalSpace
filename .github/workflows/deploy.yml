@@ -499,6 +499,10 @@ jobs:
         SERVER_USER: ubuntu
         INSTANCE_ID: i-0f4af27f7d4b2ee8d
       run: |
+        # Test basic connectivity first
+        echo "🔍 Testing basic connectivity to server..."
+        ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no ubuntu@$SERVER_IP "echo 'Server connection successful - $(date)'"
+        
         # Upload deployment package
         echo "📤 Uploading files to server..."
         scp -i /tmp/ssh_key -o StrictHostKeyChecking=no mydigitalspace-deploy.tar.gz ubuntu@$SERVER_IP:/tmp/
@@ -507,11 +511,20 @@ jobs:
         echo "🏗️ Setting up application on server..."
         ssh -i /tmp/ssh_key -o StrictHostKeyChecking=no ubuntu@$SERVER_IP << 'REMOTE_COMMANDS'
         
+        set -e  # Exit on any error
+        
         cd /tmp
         
         # Extract deployment package
+        echo "📦 Extracting deployment package..."
         rm -rf mydigitalspace-deploy
-        tar -xzf mydigitalspace-deploy.tar.gz
+        if ! tar -xzf mydigitalspace-deploy.tar.gz; then
+            echo "❌ Failed to extract deployment package!"
+            exit 1
+        fi
+        
+        echo "✅ Deployment package extracted successfully"
+        ls -la mydigitalspace-deploy/ | head -10
         
         # Sync files to application directory
         sudo mkdir -p /var/www/MyDigitalSpace
