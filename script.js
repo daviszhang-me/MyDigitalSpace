@@ -488,7 +488,7 @@ class PersonalWebsite {
         // Update main header
         const header = document.getElementById('mainHeader');
         const titles = {
-            'home': { title: 'Welcome to My Digital Space', subtitle: 'Software Developer, Problem Solver & Lifelong Learner' },
+            'home': { title: 'Welcome to My Digital Space', subtitle: 'Experimenting at the AI Frontier' },
             'about': { title: 'About Me', subtitle: 'Technology leader with 20+ years of experience' },
             'projects': { title: 'Featured Projects', subtitle: 'Showcasing innovation and technical expertise' },
             'contact': { title: 'Get In Touch', subtitle: 'Let\'s connect and discuss opportunities' }
