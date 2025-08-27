@@ -1,0 +1,8 @@
+{
+  "version": "v1.0-test",
+  "commit": "abc123def456789",
+  "branch": "main",
+  "buildNumber": 1,
+  "timestamp": "2025-08-27T10:30:00Z",
+  "environment": "local"
+}

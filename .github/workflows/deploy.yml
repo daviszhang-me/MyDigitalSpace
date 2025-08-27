@@ -474,10 +474,11 @@ jobs:
         
         # Create archive (exclude problematic files)
         echo "📦 Creating deployment archive..."
-        cd $TEMP_DIR
-        tar -czf ../mydigitalspace-deploy.tar.gz --exclude='.' --exclude='..' *
-        cd ..
+        cd /tmp
+        tar -czf mydigitalspace-deploy.tar.gz -C mydigitalspace-deploy .
         ls -la mydigitalspace-deploy.tar.gz
+        echo "📊 Archive contents preview:"
+        tar -tzf mydigitalspace-deploy.tar.gz | head -20
     
     - name: Setup SSH key
       run: |
