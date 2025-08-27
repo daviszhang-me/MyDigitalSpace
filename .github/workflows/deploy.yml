@@ -536,10 +536,10 @@ jobs:
         
         # Upload deployment package
         echo "📤 Uploading files to server..."
-        if ! scp -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 mydigitalspace-deploy.tar.gz ubuntu@$SERVER_IP:/tmp/; then
+        if ! scp -i /tmp/ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 /tmp/mydigitalspace-deploy.tar.gz ubuntu@$SERVER_IP:/tmp/; then
           echo "❌ Failed to upload deployment package!"
           echo "🔍 Checking if file exists locally:"
-          ls -la mydigitalspace-deploy.tar.gz
+          ls -la /tmp/mydigitalspace-deploy.tar.gz
           exit 1
         fi
         echo "✅ Deployment package uploaded successfully"
