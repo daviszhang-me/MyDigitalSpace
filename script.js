@@ -1568,7 +1568,7 @@ class PersonalWebsite {
 
     async saveWorkflow(workflowData) {
         try {
-            const url = this.editingWorkflowId ? `/workflows/${this.editingWorkflowId}` : '/workflows';
+            const url = this.editingWorkflowId ? `/api/workflows/${this.editingWorkflowId}` : '/api/workflows';
             const method = this.editingWorkflowId ? 'PUT' : 'POST';
             
             console.log(`🌐 Making API request: ${method} ${this.apiBaseUrl}${url}`);
@@ -1839,6 +1839,13 @@ class PersonalWebsite {
         this.editingWorkflowId = null;
         this.workflowStepCounter = 0;
         document.getElementById('workflowModalTitle').textContent = 'Create New Workflow';
+        
+        // Reset save button text
+        const saveButton = document.querySelector('#workflowForm button[type="submit"]');
+        if (saveButton) {
+            saveButton.textContent = 'Create Workflow';
+        }
+        
         document.getElementById('workflowForm').reset();
         document.getElementById('stepsList').innerHTML = '';
         document.getElementById('workflowModal').classList.add('active');
@@ -1969,12 +1976,18 @@ class PersonalWebsite {
 
     async editWorkflow(workflowId) {
         try {
-            const response = await this.apiRequest(`/workflows/${workflowId}`, 'GET');
+            const response = await this.apiRequest(`/api/workflows/${workflowId}`, 'GET');
             if (response.success) {
                 const workflow = response.data.workflow;
                 
                 this.editingWorkflowId = workflowId;
                 document.getElementById('workflowModalTitle').textContent = 'Edit Workflow';
+                
+                // Update save button text
+                const saveButton = document.querySelector('#workflowForm button[type="submit"]');
+                if (saveButton) {
+                    saveButton.textContent = 'Save Changes';
+                }
                 
                 // Populate form fields
                 document.getElementById('workflowTitle').value = workflow.title || '';
