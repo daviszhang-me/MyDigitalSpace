@@ -472,8 +472,12 @@ jobs:
         
         chmod +x $TEMP_DIR/deploy-server.sh
         
-        # Create archive
-        tar -czf mydigitalspace-deploy.tar.gz -C $TEMP_DIR .
+        # Create archive (exclude problematic files)
+        echo "📦 Creating deployment archive..."
+        cd $TEMP_DIR
+        tar -czf ../mydigitalspace-deploy.tar.gz --exclude='.' --exclude='..' *
+        cd ..
+        ls -la mydigitalspace-deploy.tar.gz
     
     - name: Setup SSH key
       run: |
@@ -552,8 +556,13 @@ jobs:
         # Extract deployment package
         echo "📦 Extracting deployment package..."
         rm -rf mydigitalspace-deploy
-        if ! tar -xzf mydigitalspace-deploy.tar.gz; then
+        mkdir -p mydigitalspace-deploy
+        if ! tar -xzf mydigitalspace-deploy.tar.gz -C mydigitalspace-deploy --no-same-permissions; then
             echo "❌ Failed to extract deployment package!"
+            echo "📋 Checking tar file:"
+            ls -la mydigitalspace-deploy.tar.gz
+            echo "📋 Trying alternative extraction:"
+            tar -tzf mydigitalspace-deploy.tar.gz | head -10
             exit 1
         fi
         
