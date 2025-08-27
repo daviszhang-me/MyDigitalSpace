@@ -120,6 +120,10 @@ jobs:
           --exclude='quick-deploy.sh' \
           ./ $TEMP_DIR/
         
+        # Ensure version.json is copied to deployment package
+        echo "📝 Copying version.json to deployment package..."
+        cp version.json $TEMP_DIR/version.json
+        
         # Create production environment file
         echo "🔧 Creating production environment..."
         JWT_SECRET_VALUE="mydigitalspace-$(openssl rand -hex 32)"
@@ -351,6 +355,14 @@ jobs:
                     add_header Cache-Control "no-cache, no-store, must-revalidate";
                     add_header Pragma "no-cache";
                 }
+                
+                # Serve JSON files with correct content type
+                location ~* \.(json)\$ {
+                    add_header Content-Type "application/json";
+                    expires -1;
+                    add_header Cache-Control "no-cache, no-store, must-revalidate";
+                    add_header Pragma "no-cache";
+                }
             }
             
             # Proxy API requests to backend
@@ -504,6 +516,19 @@ jobs:
         # Sync files to application directory
         sudo mkdir -p /var/www/MyDigitalSpace
         sudo rsync -av --delete mydigitalspace-deploy/ /var/www/MyDigitalSpace/ --exclude=deploy-server.sh
+        
+        # Verify version.json was deployed
+        echo "🔍 Verifying version.json deployment..."
+        if [ -f /var/www/MyDigitalSpace/version.json ]; then
+            echo "✅ version.json found in deployment"
+            cat /var/www/MyDigitalSpace/version.json
+        else
+            echo "❌ version.json missing from deployment!"
+            echo "📋 Files in deployment directory:"
+            ls -la /var/www/MyDigitalSpace/
+            echo "📋 Files in temp directory:"
+            ls -la mydigitalspace-deploy/
+        fi
         
         # Run deployment script
         chmod +x mydigitalspace-deploy/deploy-server.sh
