@@ -243,7 +243,7 @@ jobs:
             script: 'server-sqlite.js',
             cwd: '/var/www/MyDigitalSpace/backend',
             instances: 1,
-            exec_mode: 'cluster',
+            exec_mode: 'fork',
             env: {
               NODE_ENV: 'production',
               PORT: 3001
