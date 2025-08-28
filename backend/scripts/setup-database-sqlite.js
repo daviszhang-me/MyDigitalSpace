@@ -85,13 +85,15 @@ const setupSQLiteDatabase = async () => {
         `);
         
         console.log('🔍 Database tables verified:');
-        result.forEach(row => {
+        const tables = Array.isArray(result) ? result : [];
+        tables.forEach(row => {
             console.log(`   ✓ ${row.name}`);
         });
         
         // Test user count
         const userCount = await query('SELECT COUNT(*) as count FROM users');
-        console.log(`👥 Users in database: ${userCount[0].count}`);
+        const count = userCount && userCount[0] ? userCount[0].count : 0;
+        console.log(`👥 Users in database: ${count}`);
         
         console.log('\n🎉 SQLite database setup complete!');
         console.log('💡 You can now start the API server with: npm run start');
