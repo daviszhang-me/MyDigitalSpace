@@ -297,6 +297,11 @@ jobs:
         echo "⏳ Waiting for application to start..." | tee -a $DEPLOYMENT_LOG
         sleep 15
         
+        # Verify the deployed code version
+        echo "🔍 Verifying deployed backend code..." | tee -a $DEPLOYMENT_LOG
+        echo "📝 Health endpoint code snippet:" | tee -a $DEPLOYMENT_LOG
+        grep -A 5 -B 5 "dbTest && dbTest\[0\]" /var/www/MyDigitalSpace/backend/server-sqlite.js | head -10 | tee -a $DEPLOYMENT_LOG || echo "⚠️ Could not verify health endpoint code" | tee -a $DEPLOYMENT_LOG
+        
         # Check PM2 process status
         if ! pm2 show mydigitalspace-backend | grep "online"; then
             echo "❌ Application not running properly!" | tee -a $DEPLOYMENT_LOG
@@ -341,31 +346,28 @@ jobs:
             listen 80;
             server_name daviszhang.me www.daviszhang.me;
             
-            # Serve static files
-            location / {
-                root /var/www/MyDigitalSpace;
-                try_files \$uri \$uri/ /index.html;
-                
-                # Cache static assets (exclude HTML)
-                location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)\$ {
-                    expires 1h;
-                    add_header Cache-Control "public, max-age=3600";
-                }
-                
-                # Don't cache HTML files
-                location ~* \.(html|htm)\$ {
-                    expires -1;
-                    add_header Cache-Control "no-cache, no-store, must-revalidate";
-                    add_header Pragma "no-cache";
-                }
-                
-                # Serve JSON files with correct content type
-                location ~* \.(json)\$ {
-                    add_header Content-Type "application/json";
-                    expires -1;
-                    add_header Cache-Control "no-cache, no-store, must-revalidate";
-                    add_header Pragma "no-cache";
-                }
+            root /var/www/MyDigitalSpace;
+            index index.html;
+            
+            # Cache static assets (exclude HTML and JSON)
+            location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)\$ {
+                expires 1h;
+                add_header Cache-Control "public, max-age=3600";
+            }
+            
+            # Don't cache HTML files
+            location ~* \.(html|htm)\$ {
+                expires -1;
+                add_header Cache-Control "no-cache, no-store, must-revalidate";
+                add_header Pragma "no-cache";
+            }
+            
+            # Serve JSON files with correct content type
+            location ~* \.(json)\$ {
+                add_header Content-Type "application/json";
+                expires -1;
+                add_header Cache-Control "no-cache, no-store, must-revalidate";
+                add_header Pragma "no-cache";
             }
             
             # Proxy API requests to backend
@@ -389,6 +391,11 @@ jobs:
                 proxy_pass http://localhost:3001/health;
                 proxy_http_version 1.1;
                 proxy_set_header Host \$host;
+            }
+            
+            # Serve static files and fall back to index.html for SPA routing
+            location / {
+                try_files \$uri \$uri/ /index.html;
             }
             
             # Security headers
