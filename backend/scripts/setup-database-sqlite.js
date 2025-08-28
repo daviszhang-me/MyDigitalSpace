@@ -13,17 +13,56 @@ const setupSQLiteDatabase = async () => {
         const schemaPath = path.join(__dirname, '../../database/schema-sqlite.sql');
         const schema = fs.readFileSync(schemaPath, 'utf8');
         
-        // Split schema into individual statements and execute
-        const statements = schema
-            .split(';')
-            .map(stmt => stmt.trim())
-            .filter(stmt => stmt.length > 0);
+        // Split schema into individual statements, handling triggers properly
+        const statements = [];
+        let currentStatement = '';
+        let inTrigger = false;
+        
+        const lines = schema.split('\n');
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            
+            // Skip comments and empty lines
+            if (trimmedLine.startsWith('--') || trimmedLine.length === 0) {
+                continue;
+            }
+            
+            currentStatement += line + '\n';
+            
+            // Check if we're entering a trigger
+            if (trimmedLine.includes('CREATE TRIGGER')) {
+                inTrigger = true;
+            }
+            
+            // Check if we're ending a trigger
+            if (inTrigger && trimmedLine === 'END;') {
+                inTrigger = false;
+                statements.push(currentStatement.trim());
+                currentStatement = '';
+            }
+            // Check for regular statement end (not in trigger)
+            else if (!inTrigger && trimmedLine.endsWith(';')) {
+                statements.push(currentStatement.trim());
+                currentStatement = '';
+            }
+        }
+        
+        // Add any remaining statement
+        if (currentStatement.trim()) {
+            statements.push(currentStatement.trim());
+        }
         
         console.log(`📝 Executing ${statements.length} database statements...`);
         
         for (const statement of statements) {
             if (statement.trim()) {
-                await query(statement + ';');
+                try {
+                    await query(statement);
+                } catch (error) {
+                    console.log(`⚠️ Statement execution warning: ${error.message}`);
+                    console.log(`   Statement: ${statement.substring(0, 100)}...`);
+                    // Continue with next statement - don't fail the entire setup
+                }
             }
         }
         
