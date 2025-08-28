@@ -313,10 +313,12 @@ jobs:
         echo "🔍 Verifying PM2 process is using latest code..." | tee -a $DEPLOYMENT_LOG
         pm2 show mydigitalspace-backend | grep -E "(cwd|script|pid)" | tee -a $DEPLOYMENT_LOG || true
         
-        # Additional verification: restart once more to ensure fresh code
-        echo "🔄 Final restart to guarantee fresh code execution..." | tee -a $DEPLOYMENT_LOG
-        pm2 restart mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
-        sleep 3
+        # Additional verification: restart using ecosystem config to ensure fork mode
+        echo "🔄 Final restart using ecosystem config to guarantee fork mode..." | tee -a $DEPLOYMENT_LOG
+        pm2 stop mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        pm2 delete mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        pm2 start ecosystem.config.js 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        sleep 5
         
         # Verify the deployed code version
         echo "🔍 Verifying deployed backend code..." | tee -a $DEPLOYMENT_LOG
