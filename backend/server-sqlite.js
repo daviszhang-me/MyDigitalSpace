@@ -104,14 +104,14 @@ app.get('/health', async (req, res) => {
     try {
         // Test database connection
         const dbTest = await query('SELECT COUNT(*) as count FROM sqlite_master WHERE type="table"');
-        const tableCount = dbTest[0].count;
+        const tableCount = dbTest && dbTest[0] ? dbTest[0].count : 0;
         
         // Check if required tables exist
         const requiredTables = ['users', 'notes', 'workflows'];
         const existingTables = await query(`
             SELECT name FROM sqlite_master 
             WHERE type='table' AND name IN (${requiredTables.map(() => '?').join(',')})
-        `, requiredTables);
+        `, requiredTables) || [];
         
         const missingTables = requiredTables.filter(table => 
             !existingTables.some(existing => existing.name === table)
