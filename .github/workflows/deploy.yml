@@ -266,10 +266,16 @@ jobs:
         sudo mkdir -p /var/log/mydigitalspace
         sudo chown ubuntu:ubuntu /var/log/mydigitalspace
         
-        # Stop existing application gracefully
+        # Stop existing application gracefully with forced restart
         echo "🛑 Stopping existing application..." | tee -a $DEPLOYMENT_LOG
         pm2 stop mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
         pm2 delete mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        
+        # Kill any remaining Node.js processes on port 3001 to ensure clean restart
+        echo "🧹 Ensuring clean process restart..." | tee -a $DEPLOYMENT_LOG
+        sudo pkill -f "server-sqlite.js" 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        sudo fuser -k 3001/tcp 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        sleep 3
         
         # Start application with enhanced monitoring
         echo "🚀 Starting application..." | tee -a $DEPLOYMENT_LOG
@@ -295,7 +301,12 @@ jobs:
         
         # Enhanced application startup verification
         echo "⏳ Waiting for application to start..." | tee -a $DEPLOYMENT_LOG
-        sleep 15
+        sleep 10
+        
+        # Force PM2 to reload the process to ensure latest code is used
+        echo "🔄 Reloading PM2 process to ensure latest code..." | tee -a $DEPLOYMENT_LOG
+        pm2 reload mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || echo "⚠️ PM2 reload completed" | tee -a $DEPLOYMENT_LOG
+        sleep 5
         
         # Verify the deployed code version
         echo "🔍 Verifying deployed backend code..." | tee -a $DEPLOYMENT_LOG
