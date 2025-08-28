@@ -149,6 +149,10 @@ jobs:
         BACKUP_DIR="/tmp/mydigitalspace-backup-$(date +%Y%m%d-%H%M%S)"
         DEPLOYMENT_LOG="/var/log/mydigitalspace/deployment.log"
         
+        # Create log directory if it doesn't exist
+        sudo mkdir -p /var/log/mydigitalspace
+        sudo chown ubuntu:ubuntu /var/log/mydigitalspace
+        
         echo "🚀 Starting deployment at $DEPLOYMENT_START_TIME" | tee -a $DEPLOYMENT_LOG
         
         cd /var/www/MyDigitalSpace
