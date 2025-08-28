@@ -108,10 +108,11 @@ app.get('/health', async (req, res) => {
         
         // Check if required tables exist
         const requiredTables = ['users', 'notes', 'workflows'];
-        const existingTables = await query(`
+        const existingTablesResult = await query(`
             SELECT name FROM sqlite_master 
             WHERE type='table' AND name IN (${requiredTables.map(() => '?').join(',')})
-        `, requiredTables) || [];
+        `, requiredTables);
+        const existingTables = Array.isArray(existingTablesResult) ? existingTablesResult : [];
         
         const missingTables = requiredTables.filter(table => 
             !existingTables.some(existing => existing.name === table)
