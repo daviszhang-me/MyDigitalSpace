@@ -271,11 +271,17 @@ jobs:
         pm2 stop mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
         pm2 delete mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
         
-        # Kill any remaining Node.js processes on port 3001 to ensure clean restart
+        # Clear PM2 cache and kill all related processes
         echo "🧹 Ensuring clean process restart..." | tee -a $DEPLOYMENT_LOG
+        pm2 kill 2>&1 | tee -a $DEPLOYMENT_LOG || true
         sudo pkill -f "server-sqlite.js" 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        sudo pkill -f "mydigitalspace-backend" 2>&1 | tee -a $DEPLOYMENT_LOG || true
         sudo fuser -k 3001/tcp 2>&1 | tee -a $DEPLOYMENT_LOG || true
-        sleep 3
+        
+        # Clear Node.js require cache by restarting PM2 daemon
+        echo "🔄 Restarting PM2 daemon to clear all caches..." | tee -a $DEPLOYMENT_LOG
+        pm2 resurrect 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        sleep 5
         
         # Start application with enhanced monitoring
         echo "🚀 Starting application..." | tee -a $DEPLOYMENT_LOG
@@ -303,10 +309,14 @@ jobs:
         echo "⏳ Waiting for application to start..." | tee -a $DEPLOYMENT_LOG
         sleep 10
         
-        # Force PM2 to reload the process to ensure latest code is used
-        echo "🔄 Reloading PM2 process to ensure latest code..." | tee -a $DEPLOYMENT_LOG
-        pm2 reload mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || echo "⚠️ PM2 reload completed" | tee -a $DEPLOYMENT_LOG
-        sleep 5
+        # Verify process is using the correct working directory and code
+        echo "🔍 Verifying PM2 process is using latest code..." | tee -a $DEPLOYMENT_LOG
+        pm2 show mydigitalspace-backend | grep -E "(cwd|script|pid)" | tee -a $DEPLOYMENT_LOG || true
+        
+        # Additional verification: restart once more to ensure fresh code
+        echo "🔄 Final restart to guarantee fresh code execution..." | tee -a $DEPLOYMENT_LOG
+        pm2 restart mydigitalspace-backend 2>&1 | tee -a $DEPLOYMENT_LOG || true
+        sleep 3
         
         # Verify the deployed code version
         echo "🔍 Verifying deployed backend code..." | tee -a $DEPLOYMENT_LOG
